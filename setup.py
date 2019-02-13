@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 import sys
-install_requires = ["zmq","numpy",'tables','pyparsing','matplotlib','pyyaml','click','nsb','SSDAQ']
+install_requires = ["zmq","numpy",'tables','pyparsing','matplotlib','pyyaml','click','nsb','SSDAQ','CHECLabPy']
 
 version = {}
 with open('ssm/version.py') as fp: 
@@ -14,7 +14,7 @@ setup(name="ssm",
       author_email="samuel.flis@desy.de",
       url='https://github.com/sflis/SSM-analysis',
       packages=find_packages(),
-      provides=["ssdaq"],
+      provides=["ssm"],
       license="GNU Lesser General Public License v3 or later",
       install_requires=install_requires,
       extras_requires={
