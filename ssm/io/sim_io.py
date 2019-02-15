@@ -1,7 +1,8 @@
 from __future__ import generator_stop
 from ssdaq import SSDataWriter, SSDataReader
 from collections import namedtuple
-from tables import IsDescription,UInt64Col,Float32Col
+from tables import IsDescription,UInt64Col,Float32Col, Atom, NaturalNameWarning
+import tables
 import numpy as np
 
 class SimSSTableDs(IsDescription):
@@ -16,7 +17,7 @@ SourceDescr = namedtuple('SourceDescr','name ra dec vMag')
 
 class SimDataWriter(SSDataWriter):
     """A writer for Slow Signal simulation data"""
-    def __init__(self,filename, attrs = None,filters = None,sim_sources=None):
+    def __init__(self,filename, attrs = None,filters = None,sim_sources=None,sim_attrs=None):
         super().__init__(filename,attrs,filters)
         self.simgroup = self.file.create_group(self.file.root, 'SlowSignalSimulation', 'Slow signal simulation data')
         self.sim_tables = []
@@ -30,7 +31,15 @@ class SimDataWriter(SSDataWriter):
                 table.attrs['vMag'] = source.vMag
 
         self.table.attrs['simulation'] =True
-
+        import warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', tables.NaturalNameWarning)
+            if(sim_attrs is not None):
+                for k,sa in sim_attrs.items():
+                    for sub_k, sub_sa in sa.items():
+                        atom = Atom.from_dtype(sub_sa.dtype)
+                        ds = self.file.create_carray(self.simgroup, '{}.{}'.format(k,sub_k), atom, sub_sa.shape)
+                        ds[:] = sub_sa
 
     def write_readout(self,ro,sim=None):
         super().write_readout(ro)
@@ -75,11 +84,30 @@ class DataReader(SSDataReader):
         for group in self.file.walk_groups():
             print(group)
         self.sim_tables = []
+        self.sim_attr_dict = {}
         if('simulation' in self.attrs):
             self.data_type = 'Simulation'
             for st in self.file.root.SlowSignalSimulation:
-                self.sim_tables.append(st)
+                if(st.attrs.CLASS=='TABLE'):
+                    self.sim_tables.append(st)
+                if(st.attrs.CLASS == 'CARRAY'):
+                    base,sub = tuple(st.name.split('.'))
+                    if(base not in self.sim_attr_dict):
+                        self.sim_attr_dict[base] = {}
+                    self.sim_attr_dict[base][sub] = st[:]
+            #putting the simulation attributes into a namedtuple of namedtuples
+            SimAttrs = namedtuple('SimAttrs',' '.join(list(self.sim_attr_dict.keys())))
+            sattrs = []
+            for k,v in self.sim_attr_dict.items():
+                SimAttr = namedtuple(k,' '.join(v.keys()))
+                fields = []
+                for k_field, field in v.items():
+                    fields.append(field)
+                sattrs.append(SimAttr(*fields))
+            self.sim_attrs = SimAttrs(*sattrs)
+
             self.source_pos = np.zeros((len(self.sim_tables),2))
+
     def read(self,start=None,stop=None,step=None):
 
         if(stop is None and start is not None):
