@@ -262,33 +262,23 @@ class SSMonitorSimulation:
         res = []
         for adv_srcs  in tqdm(srcs.advance(),total=n_steps):
             tres = np.zeros(self.pix_posy.shape)
-
             for s in adv_srcs:
-                tres += rate2mV(self._raw_response(s.p)*s.rate)
+                self._raw_response(s.p,tres,s.rate)#tres += self._raw_response(s.p)*s.rate
+            #fix mapping
+            tres[np.repeat(ss_mappings.ssl2asic_ch,32)] = tres[:]
+            res.append(rate2mV(tres))
             self.cur_obstime = self.cur_obstime + self.sim_settings.time_step
             self._advance_cam_frame(self.cur_obstime)
-            print(np.sum(tres>0))
-            res.append(tres)
             break
         return res
 
-    def _raw_response(self,source):
-        res = np.zeros(self.pix_posy.shape)# if res is None else res
-        # for s in sources:
-        for j, pp in enumerate(self.pix_pos):
-            if np.linalg.norm(source-pp) > self.pix_mod.model_size:#self.pix_resp.m_size : #FIXME: corners not considered yet
-                continue
-            res[j] = self.pix_mod(source[0]-pp[0],source[1]-pp[1])
-        res[np.repeat(ss_mappings.ssl2asic_ch,32)] = res[:]
+    def _raw_response(self,source,res,c):
+        # res = np.zeros(self.pix_posy.shape)# if res is None else res
+        l = np.linalg.norm(source-self.pix_pos,axis=1)
+        i = np.where(l < self.pix_mod.model_size)[0]
+        x = source[0]-self.pix_pos[i][:,0]
+        y = source[1]-self.pix_pos[i][:,1]
+        res[i] += self.pix_mod.response_spl(x,y,grid=False)*c
+
         # print(np.sum(res>0))
         return res
-
-    # def _response(self,sources):
-    #     res = []
-    #     for adv_srcs  in sources.advance():
-    #         tres = np.zeros(self.pix_pos.shape)
-    #         res.append(tres)
-    #         for s in adv_srcs:
-    #             tres += rate2mV(self._raw_response(s.p)*s.rate)
-
-    #     return res
