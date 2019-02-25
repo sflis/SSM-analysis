@@ -19,4 +19,5 @@ def load_hipparcos_cat():
     #sanitize cataloge
     m = (pd.to_numeric(dt.ra_deg,errors='coerce')>0 )
     stars = SkyCoord(ra=dt.ra_deg[m].values,dec=dt.dec_deg[m].values,unit='deg')
-    return dt,stars
+    sel = dt[m]
+    return sel,stars

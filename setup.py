@@ -13,7 +13,8 @@ install_requires = ["zmq",
                     'CHECLabPy',
                     'astropy',
                     'pynverse',
-                    'ctapipe']
+                    'ctapipe',
+                    'hickle']
 
 version = {}
 with open('ssm/version.py') as fp:
