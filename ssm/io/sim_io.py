@@ -17,8 +17,8 @@ SourceDescr = namedtuple('SourceDescr','name ra dec vMag')
 
 class SimDataWriter(SSDataWriter):
     """A writer for Slow Signal simulation data"""
-    def __init__(self,filename, attrs = None,filters = None,sim_sources=None,sim_attrs=None):
-        super().__init__(filename,attrs,filters)
+    def __init__(self,filename, attrs = None,filters = None,sim_sources=None,sim_attrs=None,buffer=1):
+        super().__init__(filename,attrs,filters,buffer)
         self.simgroup = self.file.create_group(self.file.root, 'SlowSignalSimulation', 'Slow signal simulation data')
         self.sim_tables = []
         if(sim_sources is not None):

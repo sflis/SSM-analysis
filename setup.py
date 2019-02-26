@@ -1,6 +1,7 @@
 from setuptools import setup, find_packages
-
+import os
 import sys
+from shutil import copyfile,rmtree
 install_requires = ["zmq",
                     "numpy",
                     'tables',
@@ -16,12 +17,18 @@ install_requires = ["zmq",
                     'ctapipe',
                     'hickle']
 
-version = {}
-with open('ssm/version.py') as fp:
-    exec(fp.read(),version)
+
+if not os.path.exists('tmps'):
+    os.makedirs('tmps')
+copyfile('ssm/version.py', 'tmps/version.py')
+__import__('tmps.version')
+package = sys.modules['tmps']
+package.version.update_release_version('ssm')
+
+
 
 setup(name="ssm",
-      version=version['__version__'],
+      version=package.version.get_version(pep440=True),
       description="A framework to analyze and monitor slow signal data from the CHEC-S camera",
       author="Samuel Flis",
       author_email="samuel.flis@desy.de",
@@ -47,3 +54,5 @@ setup(name="ssm",
                     ]
                     }
       )
+
+rmtree('tmps')

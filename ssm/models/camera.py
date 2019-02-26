@@ -214,8 +214,11 @@ class SSMonitorSimulation:
         self.end_time = None
         self.filename = None
         self.time_step = None
-
-    def setup_sim(self,target,start_time,end_time,time_step,filename,):
+        self.mapping = np.empty((32,64),dtype=np.uint64)
+        for i in range(32):
+            self.mapping[i,:] = ss_mappings.ssl2asic_ch+i*64
+        self.mapping = self.mapping.flatten()
+    def setup_sim(self,target,start_time,end_time,time_step,filename = None):
         SimRunSettings = namedtuple('SimRunSettings','current_stars target start_time end_time filename time_step run_duration')
         s = target.separation(self.star_coord)
         m = s.deg<5.0
@@ -250,6 +253,9 @@ class SSMonitorSimulation:
             location=self.location,
         )
 
+    def _open_file(self):
+
+
     def run_sim(self):
         n_steps = int(self.sim_settings.run_duration.to_datetime().total_seconds()/self.sim_settings.time_step.total_seconds())
         srcs = Sources(self.sim_settings.current_stars,
@@ -265,7 +271,7 @@ class SSMonitorSimulation:
             for s in adv_srcs:
                 self._raw_response(s.p,tres,s.rate)#tres += self._raw_response(s.p)*s.rate
             #fix mapping
-            tres[np.repeat(ss_mappings.ssl2asic_ch,32)] = tres[:]
+            tres[:] = tres[self.mapping]
             res.append(rate2mV(tres))
             self.cur_obstime = self.cur_obstime + self.sim_settings.time_step
             self._advance_cam_frame(self.cur_obstime)
