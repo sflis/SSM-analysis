@@ -24,10 +24,18 @@ class SingleSource:
         pass
 
     def __str__(self):
-        s = "<{}: name={}, p=({},{}), rate={}, vmag={}, radec={}>".format(self.name,
-                                                                            self.p,
+        x,y = None,None
+        ra,dec= None,None
+        if(self.radec is not None):
+            ra =self.radec[0]
+            dec = self.radec[1]
+
+        s = "<{}: name={}, p=({},{}), rate={}, vmag={}, radec=({},{})>".format(self.__class__,self.name,
+                                                                            x,y,
+                                                                            self.rate,
                                                                             self.vmag,
-                                                                            self.radec)
+                                                                            ra,
+                                                                            dec)
 
         return s
 
@@ -180,8 +188,8 @@ from ssm.models.rate2amp_conv import rate2mV
 import datetime
 from ssm.star_cat import hipparcos
 class StarSource(SingleSource):
-    def __init__(self,rate,name, cam_frame_callback,full_cat_info):
-        super().__init__(rate,name)
+    def __init__(self,rate,name, cam_frame_callback,full_cat_info,**kwargs):
+        super().__init__(rate,name,**kwargs)
         self.cam_frame_callback = cam_frame_callback
         self.full_cat_info = dict(full_cat_info)
         self.skycoord = SkyCoord(ra=float(full_cat_info.ra_deg),
@@ -239,7 +247,7 @@ class SSMonitorSimulation:
             for i in sel.index:
                 star = self.stars.loc[i]
                 # print(star.name)
-                current_stars.append(StarSource(lc.mag2photonrate(star.vmag,area=6.5),star.name,self._get_cam_frame,star))
+                current_stars.append(StarSource(lc.mag2photonrate(star.vmag,area=6.5),star.name,self._get_cam_frame,star,vmag=star.vmag,radec=(star.ra_deg,star.dec_deg)))
         run_duration = end_time - start_time
         self.sim_settings = SimRunSettings(current_stars,
                                             target,
