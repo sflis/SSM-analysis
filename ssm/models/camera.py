@@ -4,7 +4,10 @@ from tqdm.auto import tqdm
 import target_calib
 
 from ssdaq.core.ss_data_classes import ss_mappings
-
+from ssdaq import SSReadout
+import ssm
+from ssm.utils.model_tools import Line
+from ssm.io.sim_io import SimDataWriter,SourceDescr
 _c = target_calib.CameraConfiguration("1.1.0")
 _mapping = _c.GetMapping()
 xv = np.array(_mapping.GetXPixVector())*1e3
@@ -16,7 +19,7 @@ class SingleSource:
         self.p = None
         self.vmag = vmag
         self.radec = radec
-
+        self.name = name
     def advance(self):
         pass
 
@@ -28,7 +31,7 @@ class SingleSource:
 
         return s
 
-from ssm.utils.model_tools import Line
+
 
 class LineSource(SingleSource):
     def __init__(self,name, start, stop,v,dt, rate):
@@ -174,6 +177,8 @@ from ctapipe.coordinates import CameraFrame, HorizonFrame
 from ctapipe.visualization import CameraDisplay
 from ctapipe.instrument import CameraGeometry
 from ssm.models.rate2amp_conv import rate2mV
+import datetime
+from ssm.star_cat import hipparcos
 class StarSource(SingleSource):
     def __init__(self,rate,name, cam_frame_callback,full_cat_info):
         super().__init__(rate,name)
@@ -214,22 +219,27 @@ class SSMonitorSimulation:
         self.end_time = None
         self.filename = None
         self.time_step = None
+        # Determining mapping for full camera
         self.mapping = np.empty((32,64),dtype=np.uint64)
+        invm=np.empty(64)
+        for i,k in enumerate(ss_mappings.ssl2asic_ch):
+            invm[k] = i
         for i in range(32):
-            self.mapping[i,:] = ss_mappings.ssl2asic_ch+i*64
+            self.mapping[i,:] = invm+i*64
         self.mapping = self.mapping.flatten()
-    def setup_sim(self,target,start_time,end_time,time_step,filename = None):
+    def setup_sim(self,target,start_time,end_time,time_step=datetime.timedelta(seconds=.1),max_vmag=9.0,filename = None):
         SimRunSettings = namedtuple('SimRunSettings','current_stars target start_time end_time filename time_step run_duration')
         s = target.separation(self.star_coord)
-        m = s.deg<5.0
+        m = (s.deg<5.0) & (self.stars.vmag<max_vmag)
         current_stars = []+self.user_sources
+        lc = hipparcos.LightConverter()
         if(self.stars is not None):
             sel = self.stars[m]
 
             for i in sel.index:
                 star = self.stars.loc[i]
-                print(star.name)
-                current_stars.append(StarSource(2000/star.vmag,star.name,self._get_cam_frame,star))
+                # print(star.name)
+                current_stars.append(StarSource(lc.mag2photonrate(star.vmag,area=6.5),star.name,self._get_cam_frame,star))
         run_duration = end_time - start_time
         self.sim_settings = SimRunSettings(current_stars,
                                             target,
@@ -239,6 +249,14 @@ class SSMonitorSimulation:
                                             time_step,
                                             run_duration)
 
+        print("Simulation setup:")
+        print("  Start time: {}".format(start_time))
+        print("  End time: {}".format(end_time))
+        print("  Duration: {}h".format(run_duration.to_datetime()))
+        # print("  Slow Signal sampling rate: {} ".format(run_duration.to_datetime()))
+        print("  Number of frames to simulate: {}".format(int(self.sim_settings.run_duration.to_datetime().total_seconds()/self.sim_settings.time_step.total_seconds())))
+        print("  Number of sources: {}".format(len(current_stars)))
+        print("  File name: {}".format(filename))
 
     def _get_cam_frame(self):
         return self.current_cam_frame
@@ -254,6 +272,17 @@ class SSMonitorSimulation:
         )
 
     def _open_file(self):
+        srcs = []
+        for s in self.sim_settings.current_stars:
+            srcs.append(SourceDescr(s.name,
+                                    float(s.full_cat_info['ra_deg']),
+                                    float(s.full_cat_info['dec_deg']),
+                                    float(s.full_cat_info['vmag'])))
+
+        self.writer = ssm.io.sim_io.SimDataWriter(self.sim_settings.filename,
+                                        sim_sources = srcs                                                   ,
+                                        sim_attrs = None,
+                                        buffer = 10)
 
 
     def run_sim(self):
@@ -264,18 +293,44 @@ class SSMonitorSimulation:
 
         self.cur_obstime = self.sim_settings.start_time
         self._advance_cam_frame(self.cur_obstime)
+        if(self.sim_settings.filename is not None):
+            self._open_file()
+        try:
+            res = []
+            for nro,adv_srcs  in tqdm(enumerate(srcs.advance()),total=n_steps):
+                tres = np.zeros(self.pix_posy.shape)
+                paths = []
+                for s in adv_srcs:
+                    self._raw_response(s.p,tres,s.rate)#tres += self._raw_response(s.p)*s.rate
+                    paths.append(s.p)
 
-        res = []
-        for adv_srcs  in tqdm(srcs.advance(),total=n_steps):
-            tres = np.zeros(self.pix_posy.shape)
-            for s in adv_srcs:
-                self._raw_response(s.p,tres,s.rate)#tres += self._raw_response(s.p)*s.rate
-            #fix mapping
-            tres[:] = tres[self.mapping]
-            res.append(rate2mV(tres))
-            self.cur_obstime = self.cur_obstime + self.sim_settings.time_step
-            self._advance_cam_frame(self.cur_obstime)
-            break
+                # tres = tres.reshape((32,64))
+                # print(tres[19])
+                # print(np.argmax(tres[19]))
+                # print(ss_mappings.ssl2asic_ch[np.argmax(tres[19])])
+                # print(np.where(ss_mappings.ssl2asic_ch==np.argmax(tres[19])))
+                # print(np.max(tres))
+
+                # tres = tres[self.mapping]#[self.mapping]
+                # tres[:,ss_mappings.ssl2asic_ch] = tres
+
+                    # print(tres[19])
+                    # tres = tres.flatten()
+                    # print(np.max(tres))
+                res.append(rate2mV(tres[self.mapping]))
+                if(self.sim_settings.filename is not None):
+                    curr_duration = self.cur_obstime - self.sim_settings.start_time
+                    timestamp = curr_duration.to_datetime().total_seconds()*1e9
+                    self.writer.write_readout(SSReadout(nro+1, timestamp,tres.reshape((32,64))),paths)
+
+                self.cur_obstime = self.cur_obstime + self.sim_settings.time_step
+                self._advance_cam_frame(self.cur_obstime)
+                # break
+        except Exception as e:
+            print(e)
+        finally:
+            if(self.sim_settings.filename is not None):
+                self.writer.close_file()
         return res
 
     def _raw_response(self,source,res,c):
