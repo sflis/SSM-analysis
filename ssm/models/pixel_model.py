@@ -48,8 +48,8 @@ class PixelResponseModel:
         pickle.dump({'psf':self.psf,'pix_m':self},open(filename,'wb'))
 
 
-    def __call__(self,x,y):
-        return self.response_spl(x,y)
+    def __call__(self,x,y,grid=False):
+        return self.response_spl(x,y,grid=grid)
 
 
 PixelResponse = namedtuple('PixelPSFResponse','response xi yi m_size pixel_size')
