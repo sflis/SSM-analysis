@@ -1,13 +1,24 @@
+from collections import namedtuple
+import datetime
 import numpy as np
-# from tqdm import tqdm
 from tqdm.auto import tqdm
-import target_calib
 
+from astropy.time import Time
+from astropy.coordinates import SkyCoord, EarthLocation
+import astropy.units as u
+
+from ctapipe.coordinates import CameraFrame, HorizonFrame
+from ctapipe.instrument import CameraGeometry
+
+import target_calib
+from ssm.models.rate2amp_conv import rate2mV
+from ssm.star_cat import hipparcos
 from ssdaq.core.ss_data_classes import ss_mappings
 from ssdaq import SSReadout
 import ssm
 from ssm.utils.model_tools import Line
 from ssm.io.sim_io import SimDataWriter,SourceDescr
+
 _c = target_calib.CameraConfiguration("1.1.0")
 _mapping = _c.GetMapping()
 xv = np.array(_mapping.GetXPixVector())*1e3
@@ -72,121 +83,8 @@ class Sources:
             yield ret
 
 
-class FocalPlaneModel:
-    def __init__(self,pix_resp,pix_posx=xv,pix_posy=yv):
-        self.pix_resp = pix_resp
-        self.pix_posx = pix_posx
-        self.pix_posy = pix_posy
-        self.pix_pos = np.array(list(zip(pix_posx,pix_posy)))
 
 
-    def _raw_response(self,source):
-        res = np.zeros(self.pix_pos.shape)# if res is None else res
-        # for s in sources:
-        for j, pp in enumerate(self.pix_pos):
-            if np.linalg.norm(s-pp) > self.pix_resp.model_size:#self.pix_resp.m_size : #FIXME: corners not considered yet
-                continue
-            res[j] = self.pix_resp(s[0]-pp[0],s[1]-pp[1])
-        res[np.repeat(ss_mappings.ssl2asic_ch,32)] = res[:]
-        return res
-
-    def response2(self,sources):
-        res = []
-        for adv_srcs  in sources.advance():
-            tres = np.zeros(self.pix_pos.shape)
-            res.append(tres)
-            for s in adv_srcs:
-                tres += rate2mV(self._raw_response(s.p)*s.rate)
-
-        return res
-
-    def response(self,paths,rate):
-        from ssm.models.rate2amp_conv import rate2mV
-        l =[]
-        for p in paths:
-            l.append(len(p))
-        res = np.zeros((max(l),len(self.pix_pos)))
-        paths = np.asarray(paths)
-        for i, path in enumerate(tqdm(paths,total=len(paths))):
-            res += rate2mV(self.raw_response(path,np.zeros((max(l),len(self.pix_pos))))*rate[i])
-
-    def raw_response(self,path,res = None):
-        path = np.asarray(path)
-        res = np.zeros((len(path),len(self.pix_pos))) if res is None else res
-        for i, p in enumerate(tqdm(path,total=len(path))):
-            for j, pp in enumerate(self.pix_pos):
-                if np.linalg.norm(p-pp) > self.pix_resp.model_size:#self.pix_resp.m_size : #FIXME: corners not considered yet
-                    continue
-
-                res[i,j] = self.pix_resp(p[0]-pp[0],p[1]-pp[1])
-            res[i,np.repeat(ss_mappings.ssl2asic_ch,32)] = res[i,:]
-        return res
-
-class FocalPlaneModelSim(FocalPlaneModel):
-    def __init__(self,pix_resp,pix_posx=xv,pix_posy=yv):
-        super().__init__(pix_resp,pix_posx,pix_posy)
-
-
-
-
-    def _open_file(self):
-        sim_attrs = {
-             'px_mod':{'val':self.pix_resp.response,'xi':self.pix_resp.xi,'yi':self.pix_resp.yi}
-            }
-        if(self.pix_resp.psf is not None):
-            delta = 0.025
-            x = y = np.arange(-self.pix_resp.model_size, self.pix_resp.model_size, delta)
-            X, Y = np.meshgrid(x, y)
-            sim_attrs['psf'] = {'x':x,'y':y,'val':self.pix_resp.psf(X,Y)},
-
-        vMag = 337
-        writer = ssm.io.sim_io.SimDataWriter(self.filename,
-                                             sim_sources = (SourceDescr('testsource',0,0,vMag),)                                                   ,
-                                             sim_attrs = sim_attrs)
-
-
-
-
-
-
-class CameraModel:
-    def __init__(self,pix_resp, pix_posx=xv,pix_posy=yv):#,pix_size,prate2mV):
-        self.pix_resp = pix_resp
-        self.pix_posx = pix_posx
-        self.pix_posy = pix_posy
-        self.pix_pos = np.array(list(zip(pix_posx,pix_posy)))
-
-
-    def _raw_response(self,source):
-        res = np.zeros(self.pix_pos.shape)# if res is None else res
-        # for s in sources:
-        for j, pp in enumerate(self.pix_pos):
-            if np.linalg.norm(s-pp) > self.pix_resp.model_size:#self.pix_resp.m_size : #FIXME: corners not considered yet
-                continue
-            res[j] = self.pix_resp(s[0]-pp[0],s[1]-pp[1])
-        res[np.repeat(ss_mappings.ssl2asic_ch,32)] = res[:]
-        return res
-
-    def response(self,sources):
-        res = []
-        for adv_srcs  in sources.advance():
-            tres = np.zeros(self.pix_pos.shape)
-            res.append(tres)
-            for s in adv_srcs:
-                tres += rate2mV(self._raw_response(s.p)*s.rate)
-
-        return res
-
-from astropy.time import Time
-from astropy.coordinates import SkyCoord, EarthLocation
-import astropy.units as u
-from collections import namedtuple
-from ctapipe.coordinates import CameraFrame, HorizonFrame
-from ctapipe.visualization import CameraDisplay
-from ctapipe.instrument import CameraGeometry
-from ssm.models.rate2amp_conv import rate2mV
-import datetime
-from ssm.star_cat import hipparcos
 class StarSource(SingleSource):
     def __init__(self,rate,name, cam_frame_callback,full_cat_info,**kwargs):
         super().__init__(rate,name,**kwargs)
@@ -236,7 +134,11 @@ class SSMonitorSimulation:
             self.mapping[i,:] = invm+i*64
         self.mapping = self.mapping.flatten()
     def setup_sim(self,target,start_time,end_time,time_step=datetime.timedelta(seconds=.1),max_vmag=9.0,filename = None):
-        SimRunSettings = namedtuple('SimRunSettings','current_stars target start_time end_time filename time_step run_duration')
+        SimRunSettings = namedtuple('SimRunSettings',
+                                    'current_stars target '
+                                    'start_time end_time '
+                                    'filename time_step '
+                                    'run_duration')
         s = target.separation(self.star_coord)
         m = (s.deg<5.0) & (self.stars.vmag<max_vmag)
         current_stars = []+self.user_sources
@@ -247,7 +149,12 @@ class SSMonitorSimulation:
             for i in sel.index:
                 star = self.stars.loc[i]
                 # print(star.name)
-                current_stars.append(StarSource(lc.mag2photonrate(star.vmag,area=6.5),star.name,self._get_cam_frame,star,vmag=star.vmag,radec=(star.ra_deg,star.dec_deg)))
+                current_stars.append(StarSource(lc.mag2photonrate(star.vmag,area=6.5),
+                                                star.name,
+                                                self._get_cam_frame,
+                                                star,
+                                                vmag=star.vmag,
+                                                radec=(star.ra_deg,star.dec_deg)))
         run_duration = end_time - start_time
         self.sim_settings = SimRunSettings(current_stars,
                                             target,
@@ -256,13 +163,13 @@ class SSMonitorSimulation:
                                             filename,
                                             time_step,
                                             run_duration)
-
+        n_frames = int(self.sim_settings.run_duration.to_datetime().total_seconds()/self.sim_settings.time_step.total_seconds())
         print("Simulation setup:")
         print("  Start time: {}".format(start_time))
         print("  End time: {}".format(end_time))
         print("  Duration: {}h".format(run_duration.to_datetime()))
         # print("  Slow Signal sampling rate: {} ".format(run_duration.to_datetime()))
-        print("  Number of frames to simulate: {}".format(int(self.sim_settings.run_duration.to_datetime().total_seconds()/self.sim_settings.time_step.total_seconds())))
+        print("  Number of frames to simulate: {}".format(n_frames))
         print("  Number of sources: {}".format(len(current_stars)))
         print("  File name: {}".format(filename))
 
@@ -312,19 +219,6 @@ class SSMonitorSimulation:
                     self._raw_response(s.p,tres,s.rate)#tres += self._raw_response(s.p)*s.rate
                     paths.append(s.p)
 
-                # tres = tres.reshape((32,64))
-                # print(tres[19])
-                # print(np.argmax(tres[19]))
-                # print(ss_mappings.ssl2asic_ch[np.argmax(tres[19])])
-                # print(np.where(ss_mappings.ssl2asic_ch==np.argmax(tres[19])))
-                # print(np.max(tres))
-
-                # tres = tres[self.mapping]#[self.mapping]
-                # tres[:,ss_mappings.ssl2asic_ch] = tres
-
-                    # print(tres[19])
-                    # tres = tres.flatten()
-                    # print(np.max(tres))
                 res.append(rate2mV(tres[self.mapping]))
                 if(self.sim_settings.filename is not None):
                     curr_duration = self.cur_obstime - self.sim_settings.start_time
