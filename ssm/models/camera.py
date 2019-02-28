@@ -11,7 +11,7 @@ from ctapipe.coordinates import CameraFrame, HorizonFrame
 from ctapipe.instrument import CameraGeometry
 
 import target_calib
-from ssm.models.rate2amp_conv import rate2mV
+from ssm.models import calibration
 from ssm.star_cat import hipparcos
 from ssdaq.core.ss_data_classes import ss_mappings
 from ssdaq import SSReadout
@@ -41,7 +41,7 @@ class SingleSource:
             ra =self.radec[0]
             dec = self.radec[1]
 
-        s = "<{}: name={}, p=({},{}), rate={}, vmag={}, radec=({},{})>".format(self.__class__,self.name,
+        s = "<{}: name={}, p=({},{}), rate={}, vmag={}, radec=({},{})>".format(self.__class__.__name__,self.name,
                                                                             x,y,
                                                                             self.rate,
                                                                             self.vmag,
@@ -107,7 +107,8 @@ class SSMonitorSimulation:
                         stars= None,
                         location = EarthLocation.from_geodetic(lon = 14.974609,
                                                                 lat = 37.693267,
-                                                                height=1730)):
+                                                                height=1730),
+                        calib = calibration.RateCalibration('SteveCal')):
         self.location = location
         self._cam_config =cam_config
         self.pix_mod =pix_mod
@@ -119,12 +120,6 @@ class SSMonitorSimulation:
         self.pix_pos = np.array(list(zip(self.pix_posx,self.pix_posy)))
         self.user_sources = []
         self.sim_settings = None
-        self.current_stars = None
-        self.pointing = None
-        self.start_time = None
-        self.end_time = None
-        self.filename = None
-        self.time_step = None
         # Determining mapping for full camera
         self.mapping = np.empty((32,64),dtype=np.uint64)
         invm=np.empty(64)
@@ -133,6 +128,7 @@ class SSMonitorSimulation:
         for i in range(32):
             self.mapping[i,:] = invm+i*64
         self.mapping = self.mapping.flatten()
+        self.calib = calib
     def setup_sim(self,target,start_time,end_time,time_step=datetime.timedelta(seconds=.1),max_vmag=9.0,filename = None):
         SimRunSettings = namedtuple('SimRunSettings',
                                     'current_stars target '
@@ -149,7 +145,7 @@ class SSMonitorSimulation:
             for i in sel.index:
                 star = self.stars.loc[i]
                 # print(star.name)
-                current_stars.append(StarSource(lc.mag2photonrate(star.vmag,area=6.5),
+                current_stars.append(StarSource(lc.mag2photonrate(star.vmag,area=6.5)*1e-6,
                                                 star.name,
                                                 self._get_cam_frame,
                                                 star,
@@ -219,7 +215,7 @@ class SSMonitorSimulation:
                     self._raw_response(s.p,tres,s.rate)#tres += self._raw_response(s.p)*s.rate
                     paths.append(s.p)
 
-                res.append(rate2mV(tres[self.mapping]))
+                res.append(self.calib.rate2mV(tres[self.mapping]))
                 if(self.sim_settings.filename is not None):
                     curr_duration = self.cur_obstime - self.sim_settings.start_time
                     timestamp = curr_duration.to_datetime().total_seconds()*1e9
