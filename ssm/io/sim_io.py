@@ -7,9 +7,9 @@ import numpy as np
 
 class SimSSTableDs(IsDescription):
 
-    readout_number = UInt64Col()
-    ro_time        = UInt64Col()
-    src_pos        = Float32Col((2))
+    iro     = UInt64Col()
+    ro_time = UInt64Col()
+    src_pos = Float32Col((2))
 
 
 SourceDescr = namedtuple('SourceDescr','name ra dec vMag')
@@ -46,8 +46,8 @@ class SimDataWriter(SSDataWriter):
         if(sim is not None):
             for i,s in enumerate(sim):
                 row = self.sim_tables[i][1]
-                row['readout_number'] = ro.readout_number
-                row['ro_time'] = ro.readout_timestamp
+                row['iro'] = ro.iro
+                row['ro_time'] = ro.time
                 row['src_pos'] = s
                 row.append()
                 self.sim_tables[i][0].flush()
@@ -154,8 +154,8 @@ class DataReader(SSDataReader):
 
         for i, r in enumerate(self.read()):
             amps[i,:] = self.raw_readout[tm,:]*calib
-            time[i] = self.readout_time
-            iro[i] = self.readout_number
+            time[i] = self.time
+            iro[i] = self.iro
 
 
 
@@ -169,7 +169,8 @@ class DataReader(SSDataReader):
         s+='    Filename:%s\n'%self.filename
         s+='    Title: CHEC-S Slow signal monitor data\n'
         s+='    n_readouts: %d\n'%self.n_readouts
-        s+='    ssdata-verion: %d\n'%self.attrs.ssdata_version
+        s+='    ssdata-version: %d\n'%self.attrs.ss_data_version
+        s+='    created with ssdaq version: %s\n'%self.attrs.ssdaq_version
         s+='    data_type: %s\n'%self.data_type
         if(self.data_type=='Simulation'):
              s+='    number of simulated sources: %s\n'%len(self.sim_tables)
