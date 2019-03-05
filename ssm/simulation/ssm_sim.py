@@ -28,6 +28,7 @@ class ModularSim:
         self.chain = []
         self.config = {}
         self.frame_n = 0
+        self.config_run = False
     def add(self, module):
         self.chain.append(module)
 
@@ -40,19 +41,27 @@ class ModularSim:
         self.config = {}
         self.frame_n = 0
         for module in self.chain:
+            # try:
             module.configure(self.config)
-
+            # except Exception as e:
+        self.config_run = True
     def mod_list(self):
         for mod in self.chain:
             print(mod.name)
 
     def run(self,max_frames = None):
+        if(not self.config_run):
+            self.configure()
+        self.config_run = False
         n_frames = self.config['n_frames'] if max_frames is None else max_frames
         for i in tqdm(range(n_frames)):
             self.frame_n += 1
             frame = {'frame_n':self.frame_n}
             for module in self.chain:
                 frame =module.run(frame)
+
+        for module in self.chain:
+            frame = module.finish(self.config)
 
 class SimModule:
     def __init__(self,name):
@@ -67,6 +76,9 @@ class SimModule:
     @property
     def name(self):
         return self._name
+
+    def finish(self,config):
+        pass
 
 class Time(SimModule):
     def __init__(self,start_time,end_time,time_step=datetime.timedelta(seconds=.1)):
@@ -84,6 +96,7 @@ class Time(SimModule):
         self.n_calls = 0
     def run(self,frame):
         frame['time'] = self.start_time + self.time_step*self.n_calls
+        frame['timestamp'] = (frame['time']-self.start_time).to_datetime().total_seconds()*1e9
         self.n_calls +=1
         return frame
 
@@ -95,7 +108,7 @@ class Print(SimModule):
         self.n_frames = 0
     def configure(self,config):
         self.n_frames = 0
-        pass
+
 
     def run(self,frame):
         if(self.n_frames%self.sel == 0):
@@ -134,7 +147,7 @@ class Telescope(SimModule):
         td = config['time_step']
         n_frames = config['n_frames']
         #precomputing transformations
-        #Will need to do this smarter when number of frames reaches 10k-100k
+        #Will need to do this smarter (in chunks) when the number of frames reaches 10k-100k
         self.obstimes = np.array([config['start_time'] +td*i for i in range(n_frames)])
         self.precomp_hf = HorizonFrame(location=self.location, obstime=self.obstimes)
         self.precomp_point = self.target.transform_to(self.precomp_hf)
@@ -156,9 +169,9 @@ class Telescope(SimModule):
         return frame
 
 
-class Stars(SimModule):
+class ProjectStars(SimModule):
     def __init__(self,stars,vmag_lim = (0,9)):
-        super().__init__('Stars')
+        super().__init__('ProjectStars')
         self.stars = stars
         self.stars_in_fov = None
         self.fov_star_mask = None
@@ -169,6 +182,7 @@ class Stars(SimModule):
     def configure(self,config):
         self.fov = config['fov']
         self._get_stars_in_fov(config['start_pointing'])
+        config['stars_in_fov'] = self.stars[self.fov_mask]
 
     def _get_stars_in_fov(self,pointing):
         target = pointing.transform_to('icrs')
@@ -190,7 +204,7 @@ class DetectorResponse(SimModule):
         self.pix_model = pix_model
         self.calib = calib
     def configure(self,config):
-        # Determining mapping for full camera
+        # Computing inverse mapping for full camera
         self.mapping = np.empty((32,64),dtype=np.uint64)
         invm=np.empty(64)
         for i,k in enumerate(ss_mappings.ssl2asic_ch):
@@ -207,8 +221,8 @@ class DetectorResponse(SimModule):
                             self.lc.mag2photonrate(star_srcs.vmag,
                                                     area=6.5)*1e-6):
             self._raw_response(spos,res,rate)
-        frame['raw_response'] = res
-        frame['raw_response'] = self.calib.rate2mV(res[self.mapping])
+        frame['raw_response'] = res[self.mapping]
+        frame['response'] = self.calib.rate2mV(frame['raw_response'])
         return frame
 
     def _raw_response(self,source,res,rate):
@@ -218,3 +232,68 @@ class DetectorResponse(SimModule):
         x = source[0]-self.pix_pos[i][:,0]
         y = source[1]-self.pix_pos[i][:,1]
         res[i] += self.pix_model(x,y,grid=False)*rate
+
+class Noise(SimModule):
+    def __init__(self,resp_key = 'response', name='Noise'):
+        super().__init__(name)
+        self.resp_key = resp_key
+    def configure(self,config):
+        pass
+
+    def run(self,frame):
+        frame[self.resp_key] += np.random.normal(scale=0.01*frame[self.resp_key])
+        return frame
+
+class Aggregate(SimModule):
+    def __init__(self,keys,name='Aggregate'):
+        super().__init__(name)
+        self.keys = keys
+        self.aggr = {}
+        for k in self.keys:
+            self.aggr[k] = []
+    def configure(self,config):
+        pass
+
+    def run(self,frame):
+        for k in self.keys:
+            self.aggr[k].append(frame[k])
+        return frame
+
+
+
+
+class Writer(SimModule):
+    def __init__(self,filename,
+                    response_key = 'response',
+                    iro_key ='frame_n',
+                    time_key ='timestamp',
+                    name ="DataWriter"):
+        super().__init__(name)
+        self.filename = filename
+        self.response_key = response_key
+        self.iro_key = iro_key
+        self.time_key = time_key
+
+    def configure(self,config):
+        srcs = []
+        print(config.keys())
+        for ss in config['stars_in_fov'].iterrows():
+            s = ss[1]
+            srcs.append(SourceDescr(s.name,
+                                    float(s.ra_deg),
+                                    float(s.dec_deg),
+                                    float(s.vmag)))
+
+        self.writer = ssm.io.sim_io.SimDataWriter(self.filename,
+                                        sim_sources = srcs,
+                                        sim_attrs = None,
+                                        buffer = 10)
+    def run(self,frame):
+
+        self.writer.write_readout(SSReadout(readout_number = frame[self.iro_key],
+                                            timestamp = frame[self.time_key],
+                                            data = frame[self.response_key].reshape((32,64))),
+                                    frame['star_sources'].pos)
+
+    def finish(self,config):
+        self.writer.close_file()

@@ -101,6 +101,32 @@ class StarSource(SingleSource):
             self.p = np.array([star_cam.x.to_value(u.mm),star_cam.y.to_value(u.mm)])
             yield self
 
+
+class ModularSim:
+    def __init__(self)
+        self.chain = []
+
+    def add(self, module):
+        self.chain.append(module)
+
+    def __str__(self):
+        s = ''
+        for m in self.chain:
+            s += m.__str__
+        return s
+class SimModule:
+    def __init__(self,name):
+        self._name
+
+    def run(self,frame):
+
+        pass
+
+    @property
+    def name(self):
+        return self._name
+
+
 class SSMonitorSimulation:
     def __init__(self, pix_mod,
                         cam_config=_c,
@@ -206,29 +232,32 @@ class SSMonitorSimulation:
         self._advance_cam_frame(self.cur_obstime)
         if(self.sim_settings.filename is not None):
             self._open_file()
-        try:
-            res = []
-            for nro,adv_srcs  in tqdm(enumerate(srcs.advance()),total=n_steps):
-                tres = np.zeros(self.pix_posy.shape)
-                paths = []
-                for s in adv_srcs:
-                    self._raw_response(s.p,tres,s.rate)#tres += self._raw_response(s.p)*s.rate
-                    paths.append(s.p)
+        # try:
+        res = []
+        for nro,adv_srcs  in tqdm(enumerate(srcs.advance()),total=n_steps):
+            tres = np.zeros(self.pix_posy.shape)
+            paths = []
+            for s in adv_srcs:
+                self._raw_response(s.p,tres,s.rate)#tres += self._raw_response(s.p)*s.rate
+                paths.append(s.p)
 
-                res.append(self.calib.rate2mV(tres[self.mapping]))
-                if(self.sim_settings.filename is not None):
-                    curr_duration = self.cur_obstime - self.sim_settings.start_time
-                    timestamp = curr_duration.to_datetime().total_seconds()*1e9
-                    self.writer.write_readout(SSReadout(nro+1, timestamp,tres.reshape((32,64))),paths)
-
-                self.cur_obstime = self.cur_obstime + self.sim_settings.time_step
-                self._advance_cam_frame(self.cur_obstime)
-                # break
-        except Exception as e:
-            print(e)
-        finally:
+            res.append(self.calib.rate2mV(tres[self.mapping]))
             if(self.sim_settings.filename is not None):
-                self.writer.close_file()
+                curr_duration = self.cur_obstime - self.sim_settings.start_time
+                timestamp = curr_duration.to_datetime().total_seconds()*1e9
+                self.writer.write_readout(SSReadout(readout_number = nro+1, timestamp=timestamp, data = tres.reshape((32,64))),paths)
+
+            self.cur_obstime = self.cur_obstime + self.sim_settings.time_step
+            self._advance_cam_frame(self.cur_obstime)
+            # break
+        # except Exception as e:
+        #     import sys,os
+        #     exc_type, exc_obj, exc_tb = sys.exc_info()
+        #     fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        #     print(e,exc_type, fname, exc_tb.tb_lineno)
+        # finally:
+        #     if(self.sim_settings.filename is not None):
+        #         self.writer.close_file()
         return res
 
     def _raw_response(self,source,res,c):

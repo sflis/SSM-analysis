@@ -50,7 +50,8 @@ class SimDataWriter(SSDataWriter):
                 row['ro_time'] = ro.time
                 row['src_pos'] = s
                 row.append()
-                self.sim_tables[i][0].flush()
+                if(self._cur_buf >= self.buffer):
+                    self.sim_tables[i][0].flush()
 
     def close_file(self):
         '''Closes file handle
