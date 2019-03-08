@@ -59,5 +59,6 @@ class Telescope(ProcessingModule):
         current_cam_frame = self.precomp_camf[frame['frame_n']-1]
         frame['horizon_frame'] = horizon_frame
         frame['pointing'] = pointing
+        frame['tel_pointing'] = pointing
         frame['current_cam_frame'] = current_cam_frame
         return frame

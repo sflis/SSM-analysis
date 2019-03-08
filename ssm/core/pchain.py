@@ -15,14 +15,16 @@ class ProcessingChain:
         for m in self.chain:
             s += m.__str__()+'\n'
         return s
+
     def configure(self):
-        self.config = {}
+        self.config = {'modules':[m.name for m in self.chain]}
         self.frame_n = 0
         for module in self.chain:
             # try:
             module.configure(self.config)
             # except Exception as e:
         self.config_run = True
+
     def mod_list(self):
         for mod in self.chain:
             print(mod.name)

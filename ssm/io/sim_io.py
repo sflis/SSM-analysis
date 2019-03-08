@@ -25,6 +25,7 @@ class SimDataWriter(SSDataWriter):
             for i, source in enumerate(sim_sources):
                 table = self.file.create_table(self.simgroup, 'sim_source%d'%i, SimSSTableDs, "Simulation data for %s"%source.name)
                 self.sim_tables.append((table,table.row))
+                self.tables.append(table) #For flush optimization
                 table.attrs['name'] = source.name
                 table.attrs['ra']   = source.ra
                 table.attrs['dec']   = source.dec
@@ -50,8 +51,6 @@ class SimDataWriter(SSDataWriter):
                 row['ro_time'] = ro.time
                 row['src_pos'] = s
                 row.append()
-                if(self._cur_buf >= self.buffer):
-                    self.sim_tables[i][0].flush()
 
     def close_file(self):
         '''Closes file handle
@@ -81,7 +80,7 @@ class DataReader(SSDataReader):
         """
         super().__init__(filename,mapping)
         self.data_type = 'Raw'
-        self.source_pos = None
+        self._source_pos = None
         for group in self.file.walk_groups():
             print(group)
         self.sim_tables = []
@@ -107,7 +106,11 @@ class DataReader(SSDataReader):
                 sattrs.append(SimAttr(*fields))
             self.sim_attrs = SimAttrs(*sattrs)
 
-            self.source_pos = np.zeros((len(self.sim_tables),2))
+            self._source_pos = np.zeros((len(self.sim_tables),2))
+
+    @property
+    def source_pos(self):
+        return self._source_pos.copy()
 
     def read(self,start=None,stop=None,step=None):
 
@@ -119,7 +122,8 @@ class DataReader(SSDataReader):
         for r in self._read(start,stop,step):
             for i,si in enumerate(sim_iters):
                 sr = si.__next__()
-                self.source_pos[i,:] =sr['src_pos']
+                # print(i,sr['iro'])
+                self._source_pos[i,:] =sr['src_pos']
             yield r
 
 

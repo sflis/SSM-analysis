@@ -6,12 +6,14 @@ from ssm.core.pchain import ProcessingModule
 import numpy as np
 
 class ProjectStars(ProcessingModule):
-    def __init__(self,stars,vmag_lim = (0,9)):
+    def __init__(self, stars, star_coords=None, vmag_lim = (0,9)):
         super().__init__('ProjectStars')
         self.stars = stars
         self.stars_in_fov = None
         self.fov_star_mask = None
-        self.star_coords = SkyCoord(ra=stars.ra_deg.values,dec=stars.dec_deg.values,unit='deg')
+        self.star_coords = (SkyCoord(ra=stars.ra_deg.values,
+                                    dec=stars.dec_deg.values,
+                                    unit='deg') if star_coords is None else star_coords)
         self.vmag_lim = vmag_lim
         self._StarSources = namedtuple("StarSources",'pos vmag')
 

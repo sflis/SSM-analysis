@@ -54,7 +54,7 @@ class SteveCal:
         m = x<=10
         if(np.any(m)):
             mV[m] = 0
-        m =(x>10)&(x<40)
+        m =(x>10)&(x<=40)
         if(np.any(m)):
             mV[m] = self.rate_mV(x[m])
         m = (x>40)
@@ -68,30 +68,6 @@ class SteveCalCutoff():
         self.mV_cutoff = mV_cutoff
         self.rate_cutoff = self.cal.mV2rate(self.mV_cutoff)
         self.mV2rate= pynverse.inversefunc(self.rate2mV,domain=[0,self.mV_cutoff+10])
-    def rate2mV(self,x):
-        x = np.asarray(x)
-        mV = np.empty(x.shape)
-        m = x > self.rate_cutoff
-
-        if np.any(m) :
-            mV[m] = self.mV_cutoff
-        if np.any(m):
-            mV[~m] = self.cal.rate2mV(x[~m])
-        return mV
-
-
-class SteveCalSmoothCutoff():
-    def __init__(self, mV_cutoff_start=1000.,mV_cutoff_end=3000.):
-        self.cal = SteveCal()#super().__init__()
-        self.rate_mV_int_end = interpolate.CubicSpline(list(self.nsb_MHz[m])+[40],
-                                        list(self.mean_mV[m])+[np.polyval(self.pol,40)],
-                                        bc_type=((1, 0.0), (1, self.pol[0])),
-                                        extrapolate=False)
-
-        self.mV_cutoff = mV_cutoff
-        self.rate_cutoff = self.cal.mV2rate(self.mV_cutoff)
-        self.mV2rate= pynverse.inversefunc(self.rate2mV,domain=[0,self.mV_cutoff+10])
-
     def rate2mV(self,x):
         x = np.asarray(x)
         mV = np.empty(x.shape)
@@ -121,7 +97,7 @@ class SteveCalSmoothCutoff():
     def rate2mV(self,x):
         x = np.asarray(x)
         mV = np.empty(x.shape)
-        m = (x > self.start_rate) & (x<self.end_rate)
+        m = (x > self.start_rate) & (x<=self.end_rate)
         if np.any(m) :
             mV[m] = self.rate_mV(x[m])
         m = x>self.end_rate
