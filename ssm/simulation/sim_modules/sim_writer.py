@@ -1,5 +1,5 @@
 from ssm.core.pchain import ProcessingModule
-from ssm.io.sim_io import SimDataWriter, SourceDescr
+from ssm.core.sim_io import SimDataWriter, SourceDescr
 
 from ssdaq import SSReadout
 import numpy as np
