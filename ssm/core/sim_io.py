@@ -35,6 +35,7 @@ class SimDataWriter(SSDataWriter):
         import warnings
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', tables.NaturalNameWarning)
+            warnings.simplefilter('ignore',tables.FlavorWarning)
             if(sim_attrs is not None):
                 for k,sa in sim_attrs.items():
                     for sub_k, sub_sa in sa.items():
@@ -52,12 +53,6 @@ class SimDataWriter(SSDataWriter):
                 row['src_pos'] = s
                 row.append()
 
-    def close_file(self):
-        '''Closes file handle
-        '''
-        for t in self.sim_tables:
-            t[0].flush()
-        super().close_file()
 
 
 

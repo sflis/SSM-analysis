@@ -9,9 +9,6 @@ import numpy as np
 
 import target_calib
 _c = target_calib.CameraConfiguration("1.1.0")
-_mapping = _c.GetMapping()
-xv = np.array(_mapping.GetXPixVector())*1e3
-yv = np.array(_mapping.GetYPixVector())*1e3
 
 class Telescope(ProcessingModule):
     def __init__(self,

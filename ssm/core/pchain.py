@@ -11,13 +11,14 @@ class ProcessingChain:
         self.num_funcs = 0
 
     def add(self, module):
+
         if callable(module):
             self.chain.append(FuncModule(module,"func%d ('%s')"%(self.num_funcs,module.__name__)))
             self.num_funcs +=1
-        else:
+        elif issubclass(type(module), ProcessingModule):
             self.chain.append(module)
-        # else:
-        #     raise ValueError('Function or class not compatible as ProcessingModule')
+        else:
+            raise ValueError('Class {} not compatible as ProcessingModule'.format(module.__class__))
 
     def __str__(self):
         s = "This processing chain contains {} modules:\n".format(len(self.chain))
@@ -95,6 +96,7 @@ class ProcessingModule:
             # io_params = inspect.getmembers(self)#, predicate=lambda x:isinstance(x,str))
             for iok,iov in self.__dict__.items():
                 if(iok[:4] == 'out_'):
+                    print(iok)
                     self._output[iok[4:]] = iov
                     setattr(self.__class__,
                             iok,
