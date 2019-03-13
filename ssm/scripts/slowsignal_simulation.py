@@ -1,10 +1,11 @@
 import ssdaq
 
 import target_calib
-from ssm.core.sim_io import SimDataWriter,SourceDescr
+from ssm.core.sim_io import SimDataWriter, SourceDescr
 from ssm.models import pixel_model
 from ssm.simulation import sim_modules
 from ssm.star_cat.hipparcos import load_hipparcos_cat
+
 # from ssm.simulation import ssm_sim
 from astropy.time import Time
 from astropy.coordinates import SkyCoord, EarthLocation
@@ -15,23 +16,26 @@ from ssm.core.pchain import ProcessingChain
 from copy import copy
 from ssm.models.calibration import RateCalibration
 
-def main(start_time = Time('2019-05-01T04:00'),
-        end_time = Time('2019-05-01T04:40'),
-        time_step = datetime.timedelta(seconds=1),
-        target = SkyCoord.from_name("vega"),
-        pixm_file = 'testpix_m.hkl',
-        calibration = 'SteveCalSmoothCutoff',
-        output_file='/home/sflis/CTA/projects/SSM-analysis/data/sim/VegaTrack100minNoNSB_7.hdf'):
-    print('****Setting up simulation...')
-    print('****Loading star catalog...')
-    dt,stars = load_hipparcos_cat()
+
+def main(
+    start_time=Time("2019-05-01T04:00"),
+    end_time=Time("2019-05-01T04:40"),
+    time_step=datetime.timedelta(seconds=1),
+    target=SkyCoord.from_name("vega"),
+    pixm_file="testpix_m.hkl",
+    calibration="SteveCalSmoothCutoff",
+    output_file="/home/sflis/CTA/projects/SSM-analysis/data/sim/VegaTrack100minNoNSB_7.hdf",
+):
+    print("****Setting up simulation...")
+    print("****Loading star catalog...")
+    dt, stars = load_hipparcos_cat()
     sim_chain = ProcessingChain()
     time_step = datetime.timedelta(seconds=1)
-    print('****Loading pixel response model from file')
+    print("****Loading pixel response model from file")
     pixm = pixel_model.PixelResponseModel.from_file(pixm_file)
-    t_mod = sim_modules.TimeGenerator(start_time,end_time,time_step)
-    tel = sim_modules.Telescope(target = target)
-    starproj = sim_modules.ProjectStars(dt,copy(stars))
+    t_mod = sim_modules.TimeGenerator(start_time, end_time, time_step)
+    tel = sim_modules.Telescope(target=target)
+    starproj = sim_modules.ProjectStars(dt, copy(stars))
 
     cal = RateCalibration(calibration)
     lig_prop = sim_modules.StarLightPropagator(pix_model=pixm)
@@ -50,10 +54,11 @@ def main(start_time = Time('2019-05-01T04:00'),
     sim_chain.add(writer)
     print(sim_chain)
 
-    print('****Configuring the modules, might take some time...')
+    print("****Configuring the modules, might take some time...")
     sim_chain.configure()
-    print('****Starting simulation chain')
+    print("****Starting simulation chain")
     sim_chain.run()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
