@@ -22,7 +22,9 @@ class Aggregate(ProcessingModule):
         super().__init__(name)
         self.keys = keys
         self.aggr = {}
+
         for k in self.keys:
+            self.input[k] = k
             self.aggr[k] = []
     def configure(self,config):
         pass
