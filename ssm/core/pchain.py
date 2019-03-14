@@ -28,6 +28,14 @@ class ProcessingChain:
     def __str__(self):
         s = "This processing chain contains {} modules:\n".format(len(self.chain))
         for m in self.chain:
+            # ms = m.__str__()
+            # ms = ms.split("\n")
+            # mlen = max([len(s) for s in ms])
+            # nms = ["-"*(mlen+2)+"\n"]
+            # for ss in ms:
+            #     nms.append("|{}|\n".format(ss))
+            # # nms = ["-"*(mlen+2)+"\n"]
+            # s += "  {}\n".format("".join(nms))
             s += "  {}\n".format(m.__str__())
         return s
 

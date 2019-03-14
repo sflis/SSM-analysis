@@ -139,43 +139,6 @@ class DataReader(SSDataReader):
                 self._source_pos[i, :] = sr["src_pos"]
             yield r
 
-    def load_all_data_tm(self, tm, calib=None, mapping=None):
-        """Loads all rows of data for a particular target moduel into memory
-
-            Args:
-                tm (int):   The slot number of the target module
-
-            Kwargs:
-                calib (arraylike): an array with calibration coefficient that should be applied to the data
-                mapping (str or arraylike): a string to select a mapping  or an array with the mapping
-                                            ['ssl2colrow','ssl2asic_ch','raw']
-        """
-        if calib is None:
-            calib = 1.0
-        if mapping is None:
-            mapping = self.map
-        elif isinstance(mapping, str):
-            if mapping == "raw":
-                mapping = np.arange(N_TM_PIX)
-            else:
-                try:
-                    mapping = ss_mappings.__getattribute__(mapping)
-                except:
-                    raise ValueError("No mapping found with name %s" % mapping)
-
-        amps = np.zeros((self.n_readouts, N_TM_PIX))
-        time = np.zeros(self.n_readouts)
-        iro = np.zeros(self.n_readouts, dtype=np.uint64)
-
-        for i, r in enumerate(self.read()):
-            amps[i, :] = self.raw_readout[tm, :] * calib
-            time[i] = self.time
-            iro[i] = self.iro
-
-        amps = amps[:, mapping]
-
-        ssdata = _nt("ssdata", "iro amps time tm")
-        return ssdata(iro, amps, time, tm)
 
     def __str__(self):
         s = "SSDataReader:\n"

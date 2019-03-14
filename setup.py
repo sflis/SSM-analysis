@@ -40,6 +40,7 @@ setup(
     provides=["ssm"],
     license="GNU Lesser General Public License v3 or later",
     install_requires=install_requires,
+    dependency_links = ["https://github.com/cta-chec/SSDAQ.git#egg=ssdaq"],
     extras_requires={
         #'encryption': ['cryptography']
     },
