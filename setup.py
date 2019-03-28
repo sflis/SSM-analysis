@@ -65,10 +65,6 @@ print("Downloading Hipparcos star catalog...")
 if not os.path.exists("ssm/resources"):
     os.makedirs("ssm/resources")
 
-"https://www.dropbox.com/s/7on3kmh58sz9j6w/testpix_m.hkl?raw=1"
-"https://www.dropbox.com/s/ydziqcia6j6xm19/HipparcosCatalog_lt9.txt?raw=1"
-"ssm/resources/HipparcosCatalog_lt9.txt"
-
 from urllib.error import URLError
 from urllib.request import urlopen
 
