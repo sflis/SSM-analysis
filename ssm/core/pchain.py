@@ -4,12 +4,13 @@ import inspect
 
 
 class ProcessingChain:
-    def __init__(self):
+    def __init__(self, silent=False):
         self.chain = []
         self.config = {}
         self.frame_n = 0
         self.config_run = False
         self.num_funcs = 0
+        self.silent = silent
 
     def add(self, module):
 
@@ -39,11 +40,16 @@ class ProcessingChain:
             s += "  {}\n".format(m.__str__())
         return s
 
-    def configure(self):
+    def configure(self, silent=None):
         self.config = {"modules": [m.name for m in self.chain]}
         self.frame_n = 0
 
-        for module in self.chain:
+        for module in tqdm(
+            self.chain,
+            total=len(self.chain),
+            desc="Number of modules to configure",
+            disable=self.silent if silent is None else silent,
+        ):
             # try:
             module._introspection()
             module.configure(self.config)
@@ -64,7 +70,7 @@ class ProcessingChain:
                 break
             yield frame
 
-    def run(self, max_frames=None):
+    def run(self, max_frames=None, silent=None):
         # configuration stage
         if not self.config_run:
             self.configure()
@@ -72,7 +78,11 @@ class ProcessingChain:
         n_frames = max_frames
         if "n_frames" in self.config:
             n_frames = self.config["n_frames"] if max_frames is None else max_frames
-        kwargs = {"total": n_frames, "mininterval": 0}
+        kwargs = {
+            "total": n_frames,
+            "mininterval": 0,
+            "disable": self.silent if silent is None else silent,
+        }
         self.stop = False
 
         # running stage

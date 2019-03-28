@@ -7,10 +7,6 @@ from ctapipe.coordinates import CameraFrame, HorizonFrame
 
 import numpy as np
 
-import target_calib
-
-_c = target_calib.CameraConfiguration("1.1.0")
-
 
 class Telescope(ProcessingModule):
     def __init__(
@@ -18,14 +14,20 @@ class Telescope(ProcessingModule):
         location=EarthLocation.from_geodetic(
             lon=14.974_609, lat=37.693_267, height=1730
         ),
-        cam_config=_c,
+        cam_config=None,
         focal_length=2.15,
         target=None,
         fov=5,
     ):
         super().__init__("Telescope")
         self.location = location
-        self.cam_config = cam_config
+        import target_calib
+
+        self.cam_config = (
+            target_calib.CameraConfiguration("1.1.0")
+            if cam_config is None
+            else cam_config
+        )
         self.focal_length = focal_length
         self._mapping = self.cam_config.GetMapping()
         self.pix_posx = np.array(self._mapping.GetXPixVector()) * 1e3  # mm

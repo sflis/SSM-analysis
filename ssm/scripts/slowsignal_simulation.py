@@ -5,15 +5,12 @@ from ssm.simulation import sim_modules
 from ssm.star_cat.hipparcos import load_hipparcos_cat
 from ssm.models.calibration import RateCalibration
 from ssm.core.pchain import ProcessingChain
-
+import astropy.units as u
 from astropy.time import Time
 from astropy.coordinates import SkyCoord, EarthLocation
-import astropy.units as u
-import datetime
-
 from copy import copy
-
 from os import path
+import datetime
 
 ssm_path = path.dirname(ssm.__file__)
 
@@ -27,6 +24,7 @@ def main(
     calibration="SteveCalSmoothCutoff",
     output_file="VegaTrack40minFlatNSB.hdf",
 ):
+
     print("****Setting up simulation...")
     print("****Loading star catalog...")
     dt, stars = load_hipparcos_cat()
