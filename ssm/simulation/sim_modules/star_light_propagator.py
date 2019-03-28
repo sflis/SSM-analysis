@@ -1,6 +1,5 @@
 from ssm.core.pchain import ProcessingModule
 import numpy as np
-from ssdaq.core.ss_data_classes import ss_mappings
 from ssm.star_cat import hipparcos
 
 

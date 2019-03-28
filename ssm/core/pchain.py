@@ -65,6 +65,7 @@ class ProcessingChain:
             yield frame
 
     def run(self, max_frames=None):
+        #configuration stage
         if not self.config_run:
             self.configure()
         self.config_run = False
@@ -73,6 +74,7 @@ class ProcessingChain:
             n_frames = self.config["n_frames"] if max_frames is None else max_frames
         kwargs = {"total": n_frames, "mininterval": 0}
         self.stop = False
+
         # running stage
         for frame in tqdm(self._next(), **kwargs):
             for module in self.chain[1:]:
@@ -106,12 +108,10 @@ class ProcessingModule:
         from copy import copy
 
         if not self._introspected:
-            # Introspecting to find all methods that
-            # handle commands
-            # io_params = inspect.getmembers(self)#, predicate=lambda x:isinstance(x,str))
+            # Introspecting to find all input parameters that should be
+            # changed to properties
             for iok, iov in self.__dict__.items():
                 if iok[:4] == "out_":
-                    print(iok)
                     self._output[iok[4:]] = iov
                     setattr(
                         self.__class__,

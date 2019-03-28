@@ -30,6 +30,10 @@ class Aggregate(ProcessingModule):
             self.input[k] = k
             self.aggr[k] = []
 
+    def clear(self):
+        for k,v in self.aggr.items():
+            self.aggr = []
+
     def configure(self, config):
         pass
 
