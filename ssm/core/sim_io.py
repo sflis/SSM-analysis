@@ -139,7 +139,6 @@ class DataReader(SSDataReader):
                 self._source_pos[i, :] = sr["src_pos"]
             yield r
 
-
     def __str__(self):
         s = "SSDataReader:\n"
         s += "    Filename:%s\n" % self.filename

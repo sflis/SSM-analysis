@@ -19,7 +19,8 @@ class Writer(ProcessingModule):
         self.response_key = response_key
         self.iro_key = iro_key
         self.timestamp_key = time_key
-        self.in_time_key = 'time'
+        self.in_time_key = "time"
+
     def configure(self, config):
         srcs = []
         sim_attrs = {"sim_config": {"modules": np.array(config["modules"])}}
@@ -36,13 +37,13 @@ class Writer(ProcessingModule):
     def run(self, frame):
         cputime = frame[self.in_time_key].datetime.timestamp()
         s = int(cputime)
-        ns = int((cputime - s)*1e9)
+        ns = int((cputime - s) * 1e9)
         self.writer.write_readout(
             SSReadout(
                 readout_number=frame[self.iro_key],
                 timestamp=frame[self.timestamp_key],
-                cpu_t_s = s,
-                cpu_t_ns = ns,
+                cpu_t_s=s,
+                cpu_t_ns=ns,
                 data=frame[self.response_key].reshape((32, 64)),
             ),
             frame["star_sources"].pos,

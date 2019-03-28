@@ -31,7 +31,7 @@ class Aggregate(ProcessingModule):
             self.aggr[k] = []
 
     def clear(self):
-        for k,v in self.aggr.items():
+        for k, v in self.aggr.items():
             self.aggr = []
 
     def configure(self, config):

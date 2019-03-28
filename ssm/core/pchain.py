@@ -65,7 +65,7 @@ class ProcessingChain:
             yield frame
 
     def run(self, max_frames=None):
-        #configuration stage
+        # configuration stage
         if not self.config_run:
             self.configure()
         self.config_run = False
