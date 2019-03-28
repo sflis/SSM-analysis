@@ -125,5 +125,5 @@ if __name__ == "__main__":
         target=SkyCoord.from_name(args.target),
         pixm_file=args.resp_par_path,
         calibration="SteveCalSmoothCutoff",
-        output_file=arg.output,
+        output_file=args.output,
     )
