@@ -1,20 +1,21 @@
-import ssdaq
-
-import target_calib
+import ssm
 from ssm.core.sim_io import SimDataWriter, SourceDescr
 from ssm.models import pixel_model
 from ssm.simulation import sim_modules
 from ssm.star_cat.hipparcos import load_hipparcos_cat
+from ssm.models.calibration import RateCalibration
+from ssm.core.pchain import ProcessingChain
 
-# from ssm.simulation import ssm_sim
 from astropy.time import Time
 from astropy.coordinates import SkyCoord, EarthLocation
 import astropy.units as u
 import datetime
-from ssm.simulation import sim_modules
-from ssm.core.pchain import ProcessingChain
+
 from copy import copy
-from ssm.models.calibration import RateCalibration
+
+from os import path
+
+ssm_path = path.dirname(ssm.__file__)
 
 
 def main(
@@ -22,7 +23,7 @@ def main(
     end_time=Time("2019-05-01T04:40"),
     time_step=datetime.timedelta(seconds=1),
     target=SkyCoord.from_name("vega"),
-    pixm_file="testpix_m.hkl",
+    pixm_file=path.join(ssm_path, "resources", "testpix_m.hkl"),
     calibration="SteveCalSmoothCutoff",
     output_file="/home/sflis/CTA/projects/SSM-analysis/data/sim/VegaTrack100minNoNSB_7.hdf",
 ):

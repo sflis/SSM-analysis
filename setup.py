@@ -64,31 +64,46 @@ setup(
 print("Downloading Hipparcos star catalog...")
 if not os.path.exists("ssm/resources"):
     os.makedirs("ssm/resources")
+
+"https://www.dropbox.com/s/7on3kmh58sz9j6w/testpix_m.hkl?raw=1"
+"https://www.dropbox.com/s/ydziqcia6j6xm19/HipparcosCatalog_lt9.txt?raw=1"
+"ssm/resources/HipparcosCatalog_lt9.txt"
+
 from urllib.error import URLError
 from urllib.request import urlopen
 
-attempts = 0
-success = False
-while attempts < 3:
-    try:
-        response = urlopen(
-            "https://www.dropbox.com/s/ydziqcia6j6xm19/HipparcosCatalog_lt9.txt?raw=1",
-            timeout=5,
-        )
-        content = response.read()
-        f = open("ssm/resources/HipparcosCatalog_lt9.txt", "wb")
-        f.write(content)
-        f.close()
-        success = True
-        break
-    except URLError as e:
-        attempts += 1
-        print(type(e))
-if not success:
-    print(
-        "Failed to download HipparcosCatalog_lt9. \n"
-        "Try later to download it manually from https://www.dropbox.com/s/ydziqcia6j6xm19/HipparcosCatalog_lt9.txt?raw=1"
-        "\n and put it in ssm/resources"
-    )
 
+def download_resource(url, path, name):
+    attempts = 0
+    success = False
+    while attempts < 3:
+        try:
+            response = urlopen(url, timeout=5)
+            content = response.read()
+            f = open(path, "wb")
+            f.write(content)
+            f.close()
+            success = True
+            break
+        except URLError as e:
+            attempts += 1
+            print(type(e))
+    if not success:
+        print(
+            "Failed to download {}. \n".format(name)
+            + "Try later to download it manually from {}".format(url)
+            + "\n and put it in ssm/resources"
+        )
+
+
+download_resource(
+    "https://www.dropbox.com/s/ydziqcia6j6xm19/HipparcosCatalog_lt9.txt?raw=1",
+    "ssm/resources/HipparcosCatalog_lt9.txt",
+    "HipparcosCatalog_lt9",
+)
+download_resource(
+    "https://www.dropbox.com/s/7on3kmh58sz9j6w/testpix_m.hkl?raw=1",
+    "ssm/resources/testpix_m.hkl",
+    "test pixel response parametrization",
+)
 rmtree("tmps")
