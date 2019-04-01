@@ -32,7 +32,7 @@ class Aggregate(ProcessingModule):
 
     def clear(self):
         for k, v in self.aggr.items():
-            self.aggr = []
+            self.aggr[k] = []
 
     def configure(self, config):
         pass

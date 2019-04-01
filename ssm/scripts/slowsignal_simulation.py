@@ -24,12 +24,10 @@ def main(
     calibration="SteveCalSmoothCutoff",
     output_file="VegaTrack40minFlatNSB.hdf",
 ):
-
     print("****Setting up simulation...")
     print("****Loading star catalog...")
     dt, stars = load_hipparcos_cat()
     sim_chain = ProcessingChain()
-    time_step = datetime.timedelta(seconds=1)
     print("****Loading pixel response model from file")
     pixm = pixel_model.PixelResponseModel.from_file(pixm_file)
     t_mod = sim_modules.TimeGenerator(start_time, end_time, time_step)

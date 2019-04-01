@@ -35,7 +35,7 @@ class Writer(ProcessingModule):
         )
 
     def run(self, frame):
-        cputime = frame[self.in_time_key].datetime.timestamp()
+        cputime = frame[self.in_time_key].unix
         s = int(cputime)
         ns = int((cputime - s) * 1e9)
         self.writer.write_readout(

@@ -14,7 +14,7 @@ class ProcessingChain:
 
     def add(self, module):
 
-        if callable(module):
+        if callable(module) and not issubclass(type(module), ProcessingModule):
             self.chain.append(
                 FuncModule(module, "func%d ('%s')" % (self.num_funcs, module.__name__))
             )
@@ -154,7 +154,7 @@ class ProcessingModule:
                         ),
                     )
                 if iok[:4] == "cin_":
-                    self._input[iok[4:]] = iov
+                    self._cinput[iok[4:]] = iov
                     setattr(
                         self.__class__,
                         iok,
