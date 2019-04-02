@@ -194,11 +194,20 @@ class ProcessingModule:
         s = ""
         for k, v in self._input.items():
             s += " {{{}}},".format(v)
-        s = "↓" + s[1:-1] + "↓\n"
+        s += " ( "
+        for k, v in self._cinput.items():
+            s += " {{{}}},".format(v)
+        s = s[:-1] + ")"
+        s = "↓" + s + "↓\n"
 
         s += "<{}>:{}: \n     →".format(self.__class__.__name__, self._name)
         for k, v in self._output.items():
             s += " {{{}}},".format(v)
+        s += " ("
+        for k, v in self._coutput.items():
+            s += " {{{}}},".format(v)
+        s += ")"
+
         return s
 
 
