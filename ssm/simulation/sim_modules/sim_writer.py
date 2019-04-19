@@ -1,7 +1,7 @@
 from ssm.core.pchain import ProcessingModule
 from ssm.core.sim_io import SimDataWriter, SourceDescr
 
-from ssdaq import SSReadout
+from ssdaq.data import SSReadout
 import numpy as np
 
 

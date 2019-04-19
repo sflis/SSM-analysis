@@ -1,6 +1,6 @@
 from ssm.core.pchain import ProcessingModule
 import numpy as np
-from ssdaq.core.data_classes import ss_mappings
+from ssdaq.data.slowsignal_format import ss_mappings
 from ssm.star_cat import hipparcos
 
 
@@ -19,9 +19,9 @@ class DetectorResponse(ProcessingModule):
         for i in range(32):
             self.mapping[i, :] = invm + i * 64
         self.mapping = self.mapping.flatten()
-
+        self.gain_variance = np.random.normal(loc=1.0,scale=0.1)
     def run(self, frame):
-        frame["response"] = self.calib.rate2mV(
+        frame["response"] = self.gain_variance*self.calib.rate2mV(
             frame[self.raw_response_key][self.mapping]
         )
         return frame

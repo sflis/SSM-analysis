@@ -12,7 +12,7 @@ class Telescope(ProcessingModule):
     def __init__(
         self,
         location=EarthLocation.from_geodetic(
-            lon=14.974_609, lat=37.693_267, height=1730
+            lon=14.974622, lat=37.693266, height=1730
         ),
         cam_config=None,
         focal_length=2.15,

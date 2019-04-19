@@ -1,5 +1,4 @@
 from ssm.core.pchain import ProcessingModule
-from ssm.core.pchain import ProcessingModule
 import datetime
 
 

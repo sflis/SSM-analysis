@@ -10,7 +10,6 @@ for _loader, _name, _is_pkg in _pkgutil.walk_packages(__path__):
     for _key, _value in _inspect.getmembers(_module):
         if _name.startswith("__"):
             continue
-        # print(key)
         if _inspect.isclass(_value) and issubclass(_value, ProcessingModule):
             globals()[_key] = _value
             __all__.append(_key)

@@ -5,7 +5,7 @@ from ssm.core.util_pmodules import Aggregate
 from ssm.processing.processingmodules import Reader,ClusterCleaning
 
 data_proc = ProcessingChain()
-reader = Reader('VegaTrack100minFlatNSB.hdf')
+reader = Reader('VegaTrack40minFlatNSB.hdf')
 reader.out_raw_resp = "raw_resp"
 reader.out_time = "time"
 c_cleaner = ClusterCleaning(170.0,90.0)
@@ -61,3 +61,4 @@ rs = optimize.minimize(
 
 print(rs)
 print(np.diag(rs.hess_inv))
+print(rs.x[0]-vega.ra.deg,rs.x[1]-vega.dec.deg)

@@ -1,5 +1,5 @@
 from __future__ import generator_stop
-from ssdaq import SSDataWriter, SSDataReader
+from ssdaq.data.io import SSDataWriter, SSDataReader
 from collections import namedtuple
 from tables import IsDescription, UInt64Col, Float32Col, Atom, NaturalNameWarning
 import tables
