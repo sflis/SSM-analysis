@@ -100,8 +100,8 @@ class ProcessingChain:
 
 
 class ProcessingModule:
-    def __init__(self, name):
-        self._name = name
+    def __init__(self, name=None):
+        self._name = name or self.__class__.__name__
         self._input = {}
         self._output = {}
         self._cinput = {}

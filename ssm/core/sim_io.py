@@ -94,8 +94,6 @@ class DataReader(SSDataReader):
         super().__init__(filename, mapping)
         self.data_type = "Raw"
         self._source_pos = None
-        for group in self.file.walk_groups():
-            print(group)
         self.sim_tables = []
         self.sim_attr_dict = {}
         if "simulation" in self.attrs:

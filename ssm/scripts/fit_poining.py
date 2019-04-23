@@ -5,7 +5,7 @@ from ssm.core.util_pmodules import Aggregate
 from ssm.processing.processingmodules import Reader,ClusterCleaning
 
 data_proc = ProcessingChain()
-reader = Reader('VegaTrack40minFlatNSB.hdf')
+reader = Reader('VegaTrack15minFlatNSB10Hz.hdf')
 reader.out_raw_resp = "raw_resp"
 reader.out_time = "time"
 c_cleaner = ClusterCleaning(170.0,90.0)
@@ -54,10 +54,10 @@ print(pfit.fit_chain)
 print(pfit.params)
 from scipy import optimize
 
-method = "BFGS"  #'Nelder-Mead'#
+method = "BFGS"#'Nelder-Mead' #"BFGS"  #'Nelder-Mead'#
 rs = optimize.minimize(
-    pfit, [v.val for v in pfit.params], method=method, tol=1.0, options={"disp": True}
-)
+    pfit,[v.val for v in pfit.params]  , method=method, tol=1.0, options={"disp": True,"maxiter":15,"gtol":20}
+)#
 
 print(rs)
 print(np.diag(rs.hess_inv))
