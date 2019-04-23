@@ -19,9 +19,10 @@ class DetectorResponse(ProcessingModule):
         for i in range(32):
             self.mapping[i, :] = invm + i * 64
         self.mapping = self.mapping.flatten()
-        self.gain_variance = np.random.normal(loc=1.0,scale=0.1)
+        self.gain_variance = np.random.normal(loc=1.0, scale=0.1)
+
     def run(self, frame):
-        frame["response"] = self.gain_variance*self.calib.rate2mV(
+        frame["response"] = self.gain_variance * self.calib.rate2mV(
             frame[self.raw_response_key][self.mapping]
         )
         return frame

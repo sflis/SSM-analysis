@@ -11,9 +11,7 @@ import numpy as np
 class Telescope(ProcessingModule):
     def __init__(
         self,
-        location=EarthLocation.from_geodetic(
-            lon=14.974622, lat=37.693266, height=1730
-        ),
+        location=EarthLocation.from_geodetic(lon=14.974622, lat=37.693266, height=1730),
         cam_config=None,
         focal_length=2.15,
         target=None,
