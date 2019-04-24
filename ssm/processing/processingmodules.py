@@ -53,14 +53,17 @@ class SmoothSlowSignal(ProcessingModule):
     def __init__(self, n_readouts=10):
         super().__init__()
         self.n_readouts = n_readouts
+
         self.in_resp = "raw_resp"
         self.out_resp = "raw_resp"
-
+        self.in_time = "time"
+        self.out_time = "time"
     def configure(self, config):
         pass
 
     def run(self, frame):
         frame[self.out_resp] = smooth_slowsignal(frame[self.in_resp], n=self.n_readouts)
+        frame[self.out_time] = frame[self.in_time][self.n_readouts-1:]
         return frame
 
 
@@ -94,6 +97,7 @@ class ClusterReduction(ProcessingModule):
         self.in_time = "time"
         self.out_cluster_spl ="cluster_spl"
         self.out_data = "cluster_cleaned"
+        self.out_time = "time"
         self.reduction = reduction
     def configure(self,config):
         pass
@@ -103,6 +107,13 @@ class ClusterReduction(ProcessingModule):
         time = frame[self.in_time]
         splclusters = []
         reduced_clusters = []
+
+        #Flat
+        rtime = time[::self.reduction]
+        rtind = np.arange(0,time.shape[0],self.reduction)
+        revtind = np.zeros(time.shape)
+        revtind[rtind] = np.arange(0,len(rtind))
+
         for cluster in clusters:
             splclusterdata = {}
             clusterdata = {}
@@ -115,8 +126,12 @@ class ClusterReduction(ProcessingModule):
                 smoothspl = UnivariateSpline(time[indices],data[:,1],s=5e6)
                 spld1 = smoothspl.derivative(n=1)
                 d1.append(np.max(np.abs(spld1(time[indices]))))
-                rindices = indices[::self.reduction]
-                clusterdata[pix] = list(zip(rindices, splclusterdata[pix](time[rindices])))
+                inters,rindices,r = np.intersect1d(rtind,indices,assume_unique=True, return_indices=True)#[::self.reduction]
+                # print(rtind)
+                # print(indices)
+                # rindices = revtind[rindices]
+                print(np.max(rindices))
+                clusterdata[pix] = list(zip(rindices, splclusterdata[pix](rtime[rindices])))
             d1 = np.array(d1)
             print(d1,len(d1),np.sum(d1>1.0))
             # We want a least two pixels participating in
@@ -129,5 +144,6 @@ class ClusterReduction(ProcessingModule):
         print("HERE2",len(reduced_clusters))
         frame[self.out_data] = reduced_clusters
         frame[self.out_cluster_spl] = splclusters
+        frame[self.out_time] = rtime
         return frame
 

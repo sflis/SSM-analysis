@@ -14,14 +14,18 @@ from copy import deepcopy
 class DataFeeder(FitModel):
     def __init__(self, data, times):
         super().__init__("FitDataFeeder")
-        self.times = Time(times, format="unix")
         self.data = deepcopy(data)
         ci = []
+        # tindices = set()
         for k, v in self.data.items():
             ti, res = zip(*v)
             self.data[k] = (np.array(ti, dtype=np.uint64), np.array(res))
+            # tindices = tindices.union(ti)
             if v[0][0] == 0:
                 ci.append(k)
+        # tindices = np.array(list(tindices), dtype=np.uint64)
+
+        self.times = Time(times, format="unix")
 
         self.cluster_i = ci
         self.configured = False
