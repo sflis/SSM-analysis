@@ -60,8 +60,7 @@ class SmoothSlowSignal(ProcessingModule):
         pass
 
     def run(self, frame):
-        data = frame[self.in_resp]
-        frame[self.out_resp] = smooth_slowsignal(data, n=self.n_readouts)
+        frame[self.out_resp] = smooth_slowsignal(frame[self.in_resp], n=self.n_readouts)
         return frame
 
 
@@ -84,3 +83,51 @@ class ClusterCleaning(ProcessingModule):
         )
         frame[self.out_cleaned] = cluster_data
         return frame
+
+from collections import namedtuple
+from scipy.interpolate import UnivariateSpline
+class ClusterReduction(ProcessingModule):
+    def __init__(self,s=1e4,reduction = 10,name=None):
+        super().__init__(name)
+        self.s = s
+        self.in_data = "cluster_cleaned"
+        self.in_time = "time"
+        self.out_cluster_spl ="cluster_spl"
+        self.out_data = "cluster_cleaned"
+        self.reduction = reduction
+    def configure(self,config):
+        pass
+
+    def run(self,frame):
+        clusters = frame[self.in_data]
+        time = frame[self.in_time]
+        splclusters = []
+        reduced_clusters = []
+        for cluster in clusters:
+            splclusterdata = {}
+            clusterdata = {}
+            d1 = []
+            for pix,data in sorted(cluster.items()):
+                data = np.array(data)
+                indices = np.array(data[:,0],dtype=np.uint64)
+
+                splclusterdata[pix] = UnivariateSpline(time[indices],data[:,1],s=self.s)
+                smoothspl = UnivariateSpline(time[indices],data[:,1],s=5e6)
+                spld1 = smoothspl.derivative(n=1)
+                d1.append(np.max(np.abs(spld1(time[indices]))))
+                rindices = indices[::self.reduction]
+                clusterdata[pix] = list(zip(rindices, splclusterdata[pix](time[rindices])))
+            d1 = np.array(d1)
+            print(d1,len(d1),np.sum(d1>1.0))
+            # We want a least two pixels participating in
+            # a cluster with at least two of the pixels having
+            # a derivate of more than 1
+            if len(d1)>1 and (np.sum(d1>1.0)>1):
+                print('HERE')
+                splclusters.append(splclusterdata)
+                reduced_clusters.append(clusterdata)
+        print("HERE2",len(reduced_clusters))
+        frame[self.out_data] = reduced_clusters
+        frame[self.out_cluster_spl] = splclusters
+        return frame
+
