@@ -59,7 +59,8 @@ def load_hipparcos_cat():
     header.readline()
     l = header.readline()
     ls = list(map(lambda x: x.strip(), l.split("|")))
-
+    ls[0] = '1'
+    ls[-1] = '2'
     dt = pd.read_csv(
         cat_file, delimiter="|", header=2, usecols=np.arange(1, 14), names=ls
     )

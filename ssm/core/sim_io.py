@@ -149,3 +149,6 @@ class DataReader(SSDataReader):
             s += "    number of simulated sources: %s\n" % len(self.sim_tables)
 
         return s
+
+
+
