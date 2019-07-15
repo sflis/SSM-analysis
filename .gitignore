@@ -1,0 +1,4 @@
+*.pyc
+*.ipynb_checkpoints
+ssm.egg-info/
+__pycache__/
