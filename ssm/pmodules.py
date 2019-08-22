@@ -1,6 +1,7 @@
 from ssm.core.sim_io import DataReader
 import numpy as np
 import copy
+from copy import deepcopy
 from astropy.coordinates import SkyCoord, EarthLocation
 from ssm.core.pchain import ProcessingModule
 from tqdm.auto import tqdm
@@ -25,6 +26,7 @@ class Reader(ProcessingModule):
         self.location = location
         self.focal_length =focal_length
         self.mirror_area = mirror_area
+
     def configure(self, config = {}):
         # should be read from the file in the future
         from target_calib import CameraConfiguration
@@ -38,6 +40,7 @@ class Reader(ProcessingModule):
         self.pix_pos = np.array(list(zip(self.pix_posx, self.pix_posy)))
         # for the time being we load all data at once
         config["n_frames"] = 1
+
     def run(self, frame = {}):
         # Only read the data once
 
@@ -71,6 +74,8 @@ class PFCleaner(ProcessingModule):
         self.badpixs = get_badpixs()
         self.in_data =  "raw_resp"
         self.out_data = "raw_resp"
+        self.out_badpixs = "badpixs"
+        self.out_unstablepixs = "unstablepixs"
     def configure(self,frame):
         pass
     def run(self,frame):
@@ -94,6 +99,8 @@ class PFCleaner(ProcessingModule):
         unstable_pixs = find_unstable_pixs(cleaned_amps,cleaned_time)
         cleaned_amps[:,unstable_pixs] = np.nan
         frame[self.out_data] = data.copy(cleaned_amps,cleaned_time)
+        frame[self.out_badpixs] = list(self.badpixs)
+        frame[self.out_unstablepixs] = list(unstable_pixs)
         return frame
 
 class SimpleFF(ProcessingModule):
@@ -125,14 +132,51 @@ class SmoothSlowSignal(ProcessingModule):
         super().__init__()
         self.n_readouts = n_readouts
 
-        self.in_resp = "raw_resp"
-        self.out_resp = "raw_resp"
-        self.in_time = "time"
-        self.out_time = "time"
+        self.in_data = "data"
+        self.out_data = "smooth_data"
     def configure(self, config):
         pass
 
     def run(self, frame):
-        frame[self.out_resp] = smooth_slowsignal(frame[self.in_resp], n=self.n_readouts)
-        frame[self.out_time] = frame[self.in_time][self.n_readouts-1:]
+        amps = smooth_slowsignal(frame[self.in_data].data, n=self.n_readouts)
+        time = frame[self.in_data].time
+        data = deepcopy(frame[self.in_data])
+        data.update(amps,time)
+        frame[self.out_data] = data
+        return frame
+
+
+from ssm.processing.processing_utils import (
+    compute_pixneighbor_map,
+    find_clusters,
+    get_cluster_evolution,
+    smooth_slowsignal,
+    evolve_clusters,
+)
+
+
+
+class ClusterCleaning(ProcessingModule):
+    def __init__(self, upthreshold, lothreshold):
+        super().__init__("ClusterCleaning")
+        self.upthreshold = upthreshold
+        self.lothreshold = lothreshold
+        self.in_data = "raw_resp"
+        self.out_cleaned = "clusters"
+
+    def configure(self, config):
+        pass
+        # self.pixelneighbors = compute_pixneighbor_map(config[self.cin_camconfig])
+
+    def run(self, frame):
+        data = frame[self.in_data]
+        clusters = []
+        for f in tqdm(data.data,total=len(data.data)):
+            std = np.nanstd(f)
+            mean = np.nanmean(f)
+            clusters.append(find_clusters(f,mean +self.upthreshold*std, mean +self.lothreshold*std, data.neighbors))
+        # cluster_data = evolve_clusters(
+        #     data.data, data.neighbors, self.upthreshold, self.lothreshold
+        # )
+        frame[self.out_cleaned] = clusters#_data
         return frame

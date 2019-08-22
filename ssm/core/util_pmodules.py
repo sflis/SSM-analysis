@@ -41,3 +41,24 @@ class Aggregate(ProcessingModule):
         for k in self.keys:
             self.aggr[k].append(frame[k])
         return frame
+
+
+class SimpleInjector(ProcessingModule):
+    def __init__(self, frame,N=1, name="SimpleInjector"):
+        super().__init__(name)
+        self.frame = frame
+        self.N = N
+        self.n = 0
+        for k in self.frame.keys():
+            self.output[k] = k
+
+    def configure(self, configu):
+        pass
+
+    def run(self,frame):
+        if self.n>=self.N:
+            return None
+        self.n +=1
+        frame.update(self.frame)
+        return frame
+

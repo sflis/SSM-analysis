@@ -51,7 +51,7 @@ class SlowSignalData:
         self._loc = location
         self.focal_length = focal_length
         self.mirror_area = mirror_area
-        SlowSignalData._neighbors= self.neighbors =  SlowSignalData._neighbors or compute_pixneighbor_map(self.xpix,
+        SlowSignalData._neighbors = self.neighbors = SlowSignalData._neighbors or compute_pixneighbor_map(self.xpix,
                             self.ypix,
                             self.size,)
 
