@@ -64,7 +64,7 @@ def make_ssmovie(data,
     camera = CameraImage(data.xpix, data.ypix, data.size,ax=ax)
 
 
-    camera.add_colorbar('Amplitdue (mV)')
+    camera.add_colorbar(zlabel)
     camera.set_limits_minmax(*minmax)
     im = copy.deepcopy(data.data[0])
     camera.image = im
