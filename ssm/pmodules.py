@@ -97,7 +97,7 @@ class PFCleaner(ProcessingModule):
         cleaned_time = np.array(cleaned_time)
         # Finally remove unstable (flickering) pixels
         unstable_pixs = find_unstable_pixs(cleaned_amps,cleaned_time)
-        cleaned_amps[:,unstable_pixs] = np.nan
+        #cleaned_amps[:,unstable_pixs] = np.nan
         frame[self.out_data] = data.copy(cleaned_amps,cleaned_time)
         frame[self.out_badpixs] = list(self.badpixs)
         frame[self.out_unstablepixs] = list(unstable_pixs)
