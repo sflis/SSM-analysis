@@ -46,14 +46,14 @@ class SlowSignalData:
                                                            time.shape[0]) )
         self._xpix = mapping['xpix']
         self._ypix = mapping['ypix']
-        self.size = mapping['size']
+        self._pix_size = mapping['size']
         self.pix_pos = np.array(list(zip(self.xpix, self.ypix)))
         self._loc = location
         self.focal_length = focal_length
         self.mirror_area = mirror_area
         SlowSignalData._neighbors = self.neighbors = SlowSignalData._neighbors or compute_pixneighbor_map(self.xpix,
                             self.ypix,
-                            self.size,)
+                            self.pix_size,)
 
     @property
     def time(self):
@@ -64,6 +64,11 @@ class SlowSignalData:
     @property
     def ypix(self):
         return self._ypix
+
+    @property
+    def pix_size(self):
+        return self._pix_size
+
     @property
     def location(self):
         return self._loc
@@ -73,9 +78,10 @@ class SlowSignalData:
         self._time = time
 
     def copy(self,data,time):
-        cp = SlowSignalData(data,
-                            time,
-                            {"xpix":self.xpix,"ypix":self.ypix,"size":self.size},
+        # from copy import deepcopy
+        cp = SlowSignalData(data.copy(),
+                            time.copy(),
+                            {"xpix":self.xpix,"ypix":self.ypix,"size":self.pix_size},
                             self.focal_length,
                             self.mirror_area,
                             self.location,

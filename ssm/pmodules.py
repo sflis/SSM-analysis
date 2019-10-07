@@ -64,7 +64,20 @@ class Reader(ProcessingModule):
 
         return frame
 
+from ssm.calibration.slowcal import SlowSigCal
+class Calibrate(ProcessingModule):
+    def __init__(self,calibration_file=None):
+        super().__init__("Calibrate")
+        self.in_data = 'raw_resp'
+        self.out_data = "calibrated_data"
+        self.cal = SlowSigCal(calibration_file)
 
+    def configure(self,frame):
+        pass
+    def run(self,frame):
+        data= frame[self.in_data]
+        frame[self.out_data] = data.copy(self.cal.cal(data.data),data.time)
+        return frame
 
 from ssm.putils import smooth_slowsignal,find_unstable_pixs
 from ssm.calibration.badpixs import get_badpixs
