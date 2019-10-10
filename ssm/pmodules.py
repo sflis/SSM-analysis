@@ -188,7 +188,6 @@ from ssm.processing.processing_utils import (
     compute_pixneighbor_map,
     find_clusters,
     get_cluster_evolution,
-    # smooth_slowsignal,
     evolve_clusters,
 )
 

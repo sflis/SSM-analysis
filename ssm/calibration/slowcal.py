@@ -41,8 +41,9 @@ class SlowSigCal:
 
 
     def cal(self,data:np.array)->np.array:
-        """ Applies slow signal calibration to raw data
+        """ Applies slow signal calibration to raw data.
 
+            Pixels that have an unphysical calibration are set to NaN
         Args:
             data (np.array): raw data
 
