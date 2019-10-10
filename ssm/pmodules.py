@@ -140,6 +140,31 @@ class SimpleFF(ProcessingModule):
         return frame
 
 
+class FlatFielding(ProcessingModule):
+    def __init__(self,start,stop,star_thresh = 100.):
+        super().__init__("FF")
+        self.start_ind  = start
+        self.stop_ind = stop
+        self.star_thresh = star_thresh
+        self.in_data =  "raw_resp"
+        self.out_ff = "ffc"
+    def configure(self,frame):
+        pass
+    def run(self,frame):
+        #Determining FF coefficients based on first 7000 frames
+        data = frame[self.in_data]
+        mean_res = []
+        for ii, i in enumerate(tqdm(range(self.start_ind,self.stop_ind),total=self.stop_ind-self.start_ind)):
+            r = data.data[i].copy()
+            r[r>self.star_thresh] = np.nan
+            mean_res.append(r)
+        mean_res = np.array(mean_res)
+        print("Mean amplitude during flat fielding",np.nanmean(mean_res))
+        print(np.nanmean(mean_res,axis=0))
+        ffc = np.nanmean(mean_res)/(np.nanmean(mean_res,axis=0)+0.1)
+        frame[self.out_ff] = ffc
+        return frame
+
 class SmoothSlowSignal(ProcessingModule):
     def __init__(self, n_readouts=10):
         super().__init__()
@@ -163,7 +188,7 @@ from ssm.processing.processing_utils import (
     compute_pixneighbor_map,
     find_clusters,
     get_cluster_evolution,
-    smooth_slowsignal,
+    # smooth_slowsignal,
     evolve_clusters,
 )
 

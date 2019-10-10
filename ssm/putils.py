@@ -10,6 +10,9 @@ def smooth_slowsignal(a, n=10):
     """ Simple smoothing algorithm that uses a moving average between readout frames
         It assumes that the time between each readout is equidistant.
     """
+    print("HERE")
+    a = np.nan_to_num(a)
+    print(np.where(np.isnan(a)))
     ret = np.cumsum(a, axis=0, dtype=float)
     ret[n:] = ret[n:] - ret[:-n]
     return ret[n - 1 :] / n
@@ -61,7 +64,7 @@ def make_ssmovie(data,
     dpii =400
     scale = 0.70
     fig,ax = plt.subplots(figsize=(1920/dpii*scale,1080/dpii*scale),dpi=dpii*scale)
-    camera = CameraImage(data.xpix, data.ypix, data.size,ax=ax)
+    camera = CameraImage(data.xpix, data.ypix, data.pix_size,ax=ax)
 
 
     camera.add_colorbar(zlabel)

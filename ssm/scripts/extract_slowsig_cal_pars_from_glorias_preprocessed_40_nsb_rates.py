@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from ssm.calibration.slowcal import SlowSigCal
 from ssm.utils.remotedata import load_data_factory
 import ssm
-# os.getcwd()
+
 CAL_URL ="https://owncloud.cta-observatory.org/index.php/s/xMCCrNMOE2bPwwf"
 root_dir=os.path.dirname(os.path.dirname(ssm.__file__))
 files = ['KscRmr01dBnzch3','GVwAEQd9UaGxMKC','MzMG1W8Vxlhewzf']
@@ -85,7 +85,7 @@ def cal_report(cal):
     pix_posx = np.array(mapping.GetXPixVector())
     pix_posy = np.array(mapping.GetYPixVector())
     from CHECLabPy.plotting.camera import CameraImage
-    f,a = plt.subplots(figsize=(10,8))
+    f,a = plt.subplots(figsize=(13,8))
     camera = CameraImage(pix_posx, pix_posy,pixsize,ax=a)
     camera.image = cal.a
     camera.add_colorbar('')
@@ -97,7 +97,7 @@ def cal_report(cal):
     camera.set_limits_minmax(np.nanmin(cal.a),0)
     plt.savefig('plots/cal_report_a_par.png')
 
-    f,a = plt.subplots(figsize=(10,8))
+    f,a = plt.subplots(figsize=(13,8))
     camera = CameraImage(pix_posx, pix_posy,pixsize,ax=a)
     camera.image = cal.b
     camera.add_colorbar('')
@@ -109,7 +109,7 @@ def cal_report(cal):
     camera.set_limits_minmax(0,np.nanmax(cal.b))
     plt.savefig('plots/cal_report_b_par.png')
 
-    f,a = plt.subplots(figsize=(10,8))
+    f,a = plt.subplots(figsize=(13,8))
     camera = CameraImage(pix_posx, pix_posy,pixsize,ax=a)
     camera.image = cal.c
     camera.add_colorbar('')
@@ -121,6 +121,17 @@ def cal_report(cal):
     camera.set_limits_minmax(np.nanmin(cal.c),0)
     plt.savefig('plots/cal_report_c_par.png')
 
+    f,a = plt.subplots(figsize=(13,8))
+    camera = CameraImage(pix_posx, pix_posy,pixsize,ax=a)
+    camera.image = thresh
+    camera.add_colorbar('photon rate (MHz)')
+    camera.ax.set_title('NSB threshold')
+    camera.highlight_pixels(list(cal.badpixs['unphysical_cal']),color='r',linewidth=2)
+    # camera.highlight_pixels(np.where(unphysical_rate)[0],color='b',linewidth=1.4)
+    camera.highlight_pixels(list(cal.badpixs['no_cal']),color='k')
+    camera.highlight_pixels(list(cal.badpixs['bad_fit']),color='b',linewidth=1.4)
+    # camera.set_limits_minmax(np.nanmin(cal.c),0)
+    plt.savefig('plots/cal_report_nsb_thres.png')
 
 
 
@@ -139,7 +150,6 @@ def main(diagnostic_plots=False,
 
     intensities = loadintensities()#np.array([float(r) for r in open(input_rate_steps_file,'r').readlines()])
     files = [f() for f in load_datafuncs]
-    return
     data = load_data(files)
 
     poshist = dashi.histogram.hist1d(np.linspace(0,600e3,1000))
