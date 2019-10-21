@@ -2,7 +2,12 @@ import numpy as np
 
 from ssm.core.pchain import ProcessingChain, ProcessingModule
 from ssm.core.util_pmodules import Aggregate
-from ssm.processing.processingmodules import Reader, ClusterCleaning,ClusterReduction,SmoothSlowSignal
+from ssm.processing.processingmodules import (
+    Reader,
+    ClusterCleaning,
+    ClusterReduction,
+    SmoothSlowSignal,
+)
 
 data_proc = ProcessingChain()
 reader = Reader("VegaTrack15minFlatNSB10Hz.hdf")
@@ -36,7 +41,8 @@ vega = SkyCoord.from_name("vega")
 pfit = fit.PointingFit("response", "data")
 pixm = pixel_model.PixelResponseModel.from_file("ssm/resources/testpix_m.hkl")
 feeder = fitmodules.DataFeeder(
-    aggr.aggr[c_cleaner.out_cleaned][0][1], aggr.aggr[reader.out_time][0]#[c_cleaner.out_cleaned[0][1][0]]
+    aggr.aggr[c_cleaner.out_cleaned][0][1],
+    aggr.aggr[reader.out_time][0],  # [c_cleaner.out_cleaned[0][1][0]]
 )
 tel = fitmodules.TelescopeModel()
 prstr = fitmodules.ProjectStarsModule(dt, stars)

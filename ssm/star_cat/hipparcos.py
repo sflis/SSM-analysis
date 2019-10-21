@@ -49,18 +49,28 @@ class LightConverter:
             * 1.51e7
         )
 
-
+import pickle
 def load_hipparcos_cat():
+    root_dir = path.dirname(path.dirname(ssm.__file__))
+    computed_file = path.join(root_dir,'caldata','hip_catalog_computed.pkl')
+    if path.exists(computed_file):
+        with open(computed_file,'rb') as f:
+            data = pickle.load(f)
+            return data['sel'],data['stars']
+
     ssm_path = path.dirname(ssm.__file__)
     cat_file = path.join(ssm_path, "resources/HipparcosCatalog_lt9.txt")
+
     # Need to parse the header manually to get col names correctly
     header = open(cat_file, "r")
     header.readline()
     header.readline()
     l = header.readline()
     ls = list(map(lambda x: x.strip(), l.split("|")))
-    ls[0] = '1'
-    ls[-1] = '2'
+    # Naming the unnamed columns so that read_csv does not compain
+    ls[0] = "1"
+    ls[-1] = "2"
+
     dt = pd.read_csv(
         cat_file, delimiter="|", header=2, usecols=np.arange(1, 14), names=ls
     )
@@ -70,4 +80,6 @@ def load_hipparcos_cat():
         ra=dt.ra_deg[m].values, dec=dt.dec_deg[m].values, unit="deg", frame="icrs"
     )
     sel = dt[m]
+    with open(computed_file,'wb') as f:
+        data = pickle.dump(dict(sel = sel , stars=stars),f)
     return sel, stars

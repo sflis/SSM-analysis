@@ -44,7 +44,7 @@ class Aggregate(ProcessingModule):
 
 
 class SimpleInjector(ProcessingModule):
-    def __init__(self, frame,N=1, name="SimpleInjector"):
+    def __init__(self, frame, N=1, name="SimpleInjector"):
         super().__init__(name)
         self.frame = frame
         self.N = N
@@ -55,10 +55,9 @@ class SimpleInjector(ProcessingModule):
     def configure(self, configu):
         pass
 
-    def run(self,frame):
-        if self.n>=self.N:
+    def run(self, frame):
+        if self.n >= self.N:
             return None
-        self.n +=1
+        self.n += 1
         frame.update(self.frame)
         return frame
-

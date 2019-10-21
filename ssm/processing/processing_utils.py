@@ -4,6 +4,8 @@ from tqdm.auto import tqdm
 from numpy import ndarray
 
 __configs = []
+
+
 def compute_pixneighbor_map(
     config, pixdist: float = 1.8, intertmdist: float = 2.5
 ) -> list:

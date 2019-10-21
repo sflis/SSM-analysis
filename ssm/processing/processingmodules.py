@@ -58,12 +58,13 @@ class SmoothSlowSignal(ProcessingModule):
         self.out_resp = "raw_resp"
         self.in_time = "time"
         self.out_time = "time"
+
     def configure(self, config):
         pass
 
     def run(self, frame):
         frame[self.out_resp] = smooth_slowsignal(frame[self.in_resp], n=self.n_readouts)
-        frame[self.out_time] = frame[self.in_time][self.n_readouts-1:]
+        frame[self.out_time] = frame[self.in_time][self.n_readouts - 1 :]
         return frame
 
 
@@ -87,63 +88,72 @@ class ClusterCleaning(ProcessingModule):
         frame[self.out_cleaned] = cluster_data
         return frame
 
+
 from collections import namedtuple
 from scipy.interpolate import UnivariateSpline
+
+
 class ClusterReduction(ProcessingModule):
-    def __init__(self,s=1e4,reduction = 10,name=None):
+    def __init__(self, s=1e4, reduction=10, name=None):
         super().__init__(name)
         self.s = s
         self.in_data = "cluster_cleaned"
         self.in_time = "time"
-        self.out_cluster_spl ="cluster_spl"
+        self.out_cluster_spl = "cluster_spl"
         self.out_data = "cluster_cleaned"
         self.out_time = "time"
         self.reduction = reduction
-    def configure(self,config):
+
+    def configure(self, config):
         pass
 
-    def run(self,frame):
+    def run(self, frame):
         clusters = frame[self.in_data]
         time = frame[self.in_time]
         splclusters = []
         reduced_clusters = []
 
-        #Flat
-        rtime = time[::self.reduction]
-        rtind = np.arange(0,time.shape[0],self.reduction)
+        # Flat
+        rtime = time[:: self.reduction]
+        rtind = np.arange(0, time.shape[0], self.reduction)
         revtind = np.zeros(time.shape)
-        revtind[rtind] = np.arange(0,len(rtind))
+        revtind[rtind] = np.arange(0, len(rtind))
 
         for cluster in clusters:
             splclusterdata = {}
             clusterdata = {}
             d1 = []
-            for pix,data in sorted(cluster.items()):
+            for pix, data in sorted(cluster.items()):
                 data = np.array(data)
-                indices = np.array(data[:,0],dtype=np.uint64)
+                indices = np.array(data[:, 0], dtype=np.uint64)
 
-                splclusterdata[pix] = UnivariateSpline(time[indices],data[:,1],s=self.s)
-                smoothspl = UnivariateSpline(time[indices],data[:,1],s=5e6)
+                splclusterdata[pix] = UnivariateSpline(
+                    time[indices], data[:, 1], s=self.s
+                )
+                smoothspl = UnivariateSpline(time[indices], data[:, 1], s=5e6)
                 spld1 = smoothspl.derivative(n=1)
                 d1.append(np.max(np.abs(spld1(time[indices]))))
-                inters,rindices,r = np.intersect1d(rtind,indices,assume_unique=True, return_indices=True)#[::self.reduction]
+                inters, rindices, r = np.intersect1d(
+                    rtind, indices, assume_unique=True, return_indices=True
+                )  # [::self.reduction]
                 # print(rtind)
                 # print(indices)
                 # rindices = revtind[rindices]
                 print(np.max(rindices))
-                clusterdata[pix] = list(zip(rindices, splclusterdata[pix](rtime[rindices])))
+                clusterdata[pix] = list(
+                    zip(rindices, splclusterdata[pix](rtime[rindices]))
+                )
             d1 = np.array(d1)
-            print(d1,len(d1),np.sum(d1>1.0))
+            print(d1, len(d1), np.sum(d1 > 1.0))
             # We want a least two pixels participating in
             # a cluster with at least two of the pixels having
             # a derivate of more than 1
-            if len(d1)>1 and (np.sum(d1>1.0)>1):
-                print('HERE')
+            if len(d1) > 1 and (np.sum(d1 > 1.0) > 1):
+                print("HERE")
                 splclusters.append(splclusterdata)
                 reduced_clusters.append(clusterdata)
-        print("HERE2",len(reduced_clusters))
+        print("HERE2", len(reduced_clusters))
         frame[self.out_data] = reduced_clusters
         frame[self.out_cluster_spl] = splclusters
         frame[self.out_time] = rtime
         return frame
-

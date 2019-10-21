@@ -96,16 +96,20 @@ class DataReader(SSDataReader):
         self._source_pos = None
         self.sim_tables = []
         self.sim_attr_dict = {}
+
         if "simulation" in self.attrs:
             self.data_type = "Simulation"
+
             for st in self.file.root.SlowSignalSimulation:
                 if st.attrs.CLASS == "TABLE":
                     self.sim_tables.append(st)
+
                 if st.attrs.CLASS == "CARRAY":
                     base, sub = tuple(st.name.split("."))
                     if base not in self.sim_attr_dict:
                         self.sim_attr_dict[base] = {}
                     self.sim_attr_dict[base][sub] = st[:]
+
             # putting the simulation attributes into a namedtuple of namedtuples
             SimAttrs = namedtuple("SimAttrs", " ".join(list(self.sim_attr_dict.keys())))
             sattrs = []
@@ -115,8 +119,8 @@ class DataReader(SSDataReader):
                 for k_field, field in v.items():
                     fields.append(field)
                 sattrs.append(SimAttr(*fields))
-            self.sim_attrs = SimAttrs(*sattrs)
 
+            self.sim_attrs = SimAttrs(*sattrs)
             self._source_pos = np.zeros((len(self.sim_tables), 2))
 
     @property
@@ -149,6 +153,3 @@ class DataReader(SSDataReader):
             s += "    number of simulated sources: %s\n" % len(self.sim_tables)
 
         return s
-
-
-
