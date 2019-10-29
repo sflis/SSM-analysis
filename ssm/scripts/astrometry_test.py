@@ -61,7 +61,7 @@ matcher = StarPatternMatch.from_location(altaz_frame=altaz_frame,
                                   pixsize=mapping.GetSize())
 
 
-alt,az = np.deg2rad(73.21), .1
+alt,az = np.deg2rad(73.21), 0   #-12.1
 
 #az = np.random.uniform(0,2*np.pi)
 #alt = np.arccos(np.random.uniform(0,np.cos(np.pi*alt_min/180.)))
@@ -76,14 +76,17 @@ hotspots,tel_pointing,star_ind,hips_in_fov,all_hips = generate_hotspots(alt*u.ra
 true_hotspots = np.array(hotspots)
 
 hotspots = true_hotspots.copy()
+print(len(hotspots))
 hotspots[1,:] = hotspots[1,:]+0.003
 
-matched_hs = matcher.identify_stars(hotspots,horizon_level=30)
+matched_hs = matcher.identify_stars(hotspots,horizon_level=30,only_one_it=False)
+
 
 fig, axs = plt.subplots(constrained_layout=True, figsize=(10,6))
 #Different average camera images
 camera = CameraImage(xpix, ypix, mapping.GetSize(),ax=axs)
 camera.image = np.ones(2048)
+axs.plot(true_hotspots[0,0],true_hotspots[0,1],'ob')
 axs.plot(true_hotspots[:,0],true_hotspots[:,1],'o',color='gray', mfc='none', ms=25, mew=2)
 for ths,hs in zip(true_hotspots,hotspots):
     if tuple(ths)!=tuple(hs):
@@ -92,6 +95,8 @@ for i, sid in enumerate(all_hips):
     # i = sid[0]
     hip = sid[1]
     plt.annotate("{}".format(hip),(true_hotspots[i,0],true_hotspots[i,1]),color='r')
+correct_id = 0
+wrong_id = 0
 for mhs in matched_hs:
     xy = mhs[0]
     print(xy)
@@ -100,7 +105,9 @@ for mhs in matched_hs:
     print(all_hips[mhs[2]],mhs[2],int(mhs[1]))
     if all_hips[mhs[2]][1] != int(mhs[1]):
         axs.plot(hotspots[mhs[2],0],hotspots[mhs[2],1],'ro', mfc='none', ms=25, mew=1)
+        wrong_id +=1
     else:
         axs.plot(hotspots[mhs[2],0],hotspots[mhs[2],1],'go', mfc='none', ms=25, mew=1)
-
+        correct_id +=1
+plt.title("Number of hotspots {}, catalog stars{}, correct id {}, wrong id {}".format(len(hotspots),len(hips_in_fov),correct_id,wrong_id))
 plt.show()
