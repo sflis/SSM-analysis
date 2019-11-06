@@ -82,7 +82,7 @@ true_hotspots = np.array(hotspots)
 
 hotspots = true_hotspots.copy()
 print(len(hotspots))
-hotspots[1, :] = hotspots[1, :] #+ 0.003
+hotspots[1, :] = hotspots[1, :] + 0.003
 
 matched_hs = matcher.identify_stars(hotspots, horizon_level=30, only_one_it=False)
 
@@ -139,7 +139,7 @@ for mhs in matched_hs:
         correct_id += 1
 telsky = telescope_pointing.transform_to('icrs')
 plt.title(
-    "Number of hotspots {}, catalog stars{}, correct id {}, wrong id {}\n"
+    "Number of hotspots {}, catalog stars {}, correct id {}, wrong id {}\n"
     "True pointing: {:.4f}° RA {:.4f}° DEC, \nEstimatied pointing: {:.4f}° RA, {:.4f}° DEC".format(
         len(hotspots),
         len(hips_in_fov),

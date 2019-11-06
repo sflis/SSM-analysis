@@ -402,50 +402,18 @@ def matchpattern(hotspotmap, hotspots, xlim, ylim, pattern, bins, vmag_lim=None)
     Returns:
         TYPE: Description
 
-    Deleted Parameters:
-        test_n_stars (int, optional): Number of stars in pattern to test.
-            Stars in a pattern are tested in descending
-            vmag order.
     """
 
-    angs = np.linspace(0, np.pi * 2, 360)
     n_hotspots = np.sum(hotspotmap.bincontent)
     hotspot_i = np.where(hotspotmap.bincontent > 0)
-
     hotspots = np.array(
         [hotspotmap.bincenters[0][hotspot_i[0]], hotspotmap.bincenters[1][hotspot_i[1]]]
     ).T
-    hs_dist = np.linalg.norm(hotspots, axis=1)
+
     vmag_lim = vmag_lim or np.inf
     vmag_starmask = pattern.sp_vmag < vmag_lim
-    star_dist = np.linalg.norm(pattern.sp_pos[vmag_starmask, :], axis=1)
-    dbins = np.arange(
-        0, np.max(hs_dist) + 0.018, 0.006
-    )  # np.linspace(0, np.max(star_dist) + 0.018, 24)
 
-    hs_dist_hist = dashi.histogram.hist1d(dbins)
-    star_dist_hist = dashi.histogram.hist1d(dbins)
-    hs_dist_hist.fill(hs_dist)
-    star_dist_hist.fill(star_dist)
-    # Determining relevant rotations to match at least one hotspot with one star
-    if np.sum(hs_dist_hist.bincontent * star_dist_hist.bincontent) < len(angs) * 0.7:
-        rot_angs = []
-        star_mask = star_dist < dbins[-1]
-        star_bins = np.digitize(star_dist[star_mask], dbins)
-        hs_bins = np.digitize(hs_dist, dbins)
-        for bin_i in range(1, dbins.shape[0]):
-            hs_bin_mask = (hs_bins == bin_i) | (hs_bins == (bin_i - 1))
-            star_bin_mask = (star_bins == bin_i) | (star_bins == (bin_i - 1))
-            for hotspot in hotspots[np.where(hs_bin_mask)[0]]:
-                hotspot_rotang = rotang(hotspot)
-                for star_pos in pattern.sp_pos[vmag_starmask, :][star_mask][
-                    np.where(star_bin_mask)[0]
-                ]:
-                    rot_angs.append(rotang(star_pos) - hotspot_rotang)
-
-    angs = np.sort(np.array(list(set(rot_angs))))
-
-    bw = hotspotmap.binwidths[0][0]
+    angs,star_mask,dbins,hs_bins,star_bins = prepare_pattern_rotations(hotspots,pattern.sp_pos[vmag_starmask])
     m = []
     n_stars = []
     # Looping through all rotations and computing number of matches
@@ -496,40 +464,12 @@ def matchpattern_unbinned(hotspots, xlim, ylim, pattern, bins, vmag_lim=None):
     Returns:
         TYPE: Description
 
-    Deleted Parameters:
-        test_n_stars (int, optional): Number of stars in pattern to test.
-            Stars in a pattern are tested in descending
-            vmag order.
     """
 
-    angs = np.linspace(0, np.pi * 2, 360)
-    hs_dist = np.linalg.norm(hotspots, axis=1)
     vmag_lim = vmag_lim or np.inf
     vmag_starmask = pattern.sp_vmag < vmag_lim
-    star_dist = np.linalg.norm(pattern.sp_pos[vmag_starmask, :], axis=1)
-    dbins = np.arange(
-        0, np.max(hs_dist) + 0.018, 0.006
-    )  # np.linspace(0, np.max(star_dist) + 0.018, 24)
-
-    hs_dist_hist = dashi.histogram.hist1d(dbins)
-    star_dist_hist = dashi.histogram.hist1d(dbins)
-    hs_dist_hist.fill(hs_dist)
-    star_dist_hist.fill(star_dist)
-
-    rot_angs = []
-    star_mask = (star_dist < dbins[-1]) & vmag_starmask
-    star_bins = np.digitize(star_dist[star_mask], dbins)
-    hs_bins = np.digitize(hs_dist, dbins)
-
-    for bin_i in range(1, dbins.shape[0]):
-        hs_bin_mask = (hs_bins == bin_i) | (hs_bins == (bin_i - 1))
-        star_bin_mask = (star_bins == bin_i) | (star_bins == (bin_i - 1))
-        for hotspot in hotspots[np.where(hs_bin_mask)[0]]:
-            hotspot_rotang = rotang(hotspot)
-            for star_pos in pattern.sp_pos[star_mask][np.where(star_bin_mask)[0]]:
-                rot_angs.append(rotang(star_pos) - hotspot_rotang)
-
-    angs = np.sort(np.array(list(set(rot_angs))))
+    sel_star_pos = pattern.sp_pos[vmag_starmask]
+    angs,star_mask,dbins,hs_bins,star_bins = prepare_pattern_rotations(hotspots,sel_star_pos)
 
     m = []
     n_matches = []
@@ -539,7 +479,7 @@ def matchpattern_unbinned(hotspots, xlim, ylim, pattern, bins, vmag_lim=None):
     for n in angs:
         rm = rot_matrix(n)
 
-        rot_stars = np.dot(rm, pattern.sp_pos[star_mask].T).T
+        rot_stars = np.dot(rm, sel_star_pos[star_mask].T).T
         # We only care about stars that are within
         # a rectangle defined by the detected hotspots
         cam_fov_mask = (
@@ -562,7 +502,7 @@ def matchpattern_unbinned(hotspots, xlim, ylim, pattern, bins, vmag_lim=None):
 
                     if dist < 0.009:
                         matched_stars.append(
-                            (hs_ind, pattern.sp_hip[star_mask][star_pos_ind])
+                            (hs_ind, pattern.sp_hip[vmag_starmask][star_mask][star_pos_ind])
                         )
         matched_stars = list(set(matched_stars))
         if len(matched_stars) > 0:
@@ -579,6 +519,45 @@ def matchpattern_unbinned(hotspots, xlim, ylim, pattern, bins, vmag_lim=None):
     else:
         return None
 
+def prepare_pattern_rotations(hotspots,star_pos):
+    """Summary
+
+    Args:
+        hotspots (TYPE): Description
+        star_pos (TYPE): Description
+
+    Returns:
+        TYPE: Description
+    """
+    hs_dist = np.linalg.norm(hotspots, axis=1)
+    star_dist = np.linalg.norm(star_pos, axis=1)
+    dbins = np.arange(
+        0, np.max(hs_dist) + 0.06, 0.006
+    )
+
+    hs_dist_hist = dashi.histogram.hist1d(dbins)
+    star_dist_hist = dashi.histogram.hist1d(dbins)
+    hs_dist_hist.fill(hs_dist)
+    star_dist_hist.fill(star_dist)
+
+    rot_angs = []
+    star_mask = (star_dist < dbins[-1]) #& vmag_starmask
+    star_bins = np.digitize(star_dist[star_mask], dbins)
+    hs_bins = np.digitize(hs_dist, dbins)
+    # We only want to find rotations that will potentially match
+    # at least one star with one hotspot, therefore we only
+    # rotate the pattern to hotspots that are at roghly the same
+    # distance as some star in the pattern
+    for bin_i in range(1, dbins.shape[0]):
+        hs_bin_mask = (hs_bins == bin_i) | (hs_bins == (bin_i - 1))
+        star_bin_mask = (star_bins == bin_i) | (star_bins == (bin_i - 1))
+        for hotspot in hotspots[np.where(hs_bin_mask)[0]]:
+            hotspot_rotang = rotang(hotspot)
+            for spos in star_pos[star_mask][np.where(star_bin_mask)[0]]:
+                rot_angs.append(rotang(spos) - hotspot_rotang)
+
+    angs = np.sort(np.array(list(set(rot_angs))))
+    return angs,star_mask,dbins,hs_bins,star_bins
 
 def std2eq(ra0: float, dec0: float, X: float, Y: float) -> tuple:
     """ Converts Standard plate coordinates to
