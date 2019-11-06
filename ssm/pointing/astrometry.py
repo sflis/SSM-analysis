@@ -341,7 +341,6 @@ class StarPatternMatch:
             print("No Match")
             return match
 
-
     def determine_pointing(self, matched_hotspots):
         hs = []
         spos = []
@@ -349,25 +348,30 @@ class StarPatternMatch:
         for h in matched_hotspots:
             hs.append(h[0])
             hips.append(h[1])
-            spos.append(self.star_coordinates[np.where(h[1]==self.star_table.hip_number)[0]])
+            spos.append(
+                self.star_coordinates[np.where(h[1] == self.star_table.hip_number)[0]]
+            )
 
         # Shifting image center for first pointing approximation to most
         # center identified hotspot
-        centermost_hs = np.argmin(np.linalg.norm(hs,axis=1))
+        centermost_hs = np.argmin(np.linalg.norm(hs, axis=1))
         chs = hs[centermost_hs]
-        shifted_hs = hs-chs
-        cmsind =np.where(self.star_table.hip_number ==hips[centermost_hs])[0]
+        shifted_hs = hs - chs
+        cmsind = np.where(self.star_table.hip_number == hips[centermost_hs])[0]
         cmspos = self.star_coordinates[cmsind]
-        #First pointing approximation
-        cx,cy= solve_plate_constants(cmspos.ra.rad,cmspos.dec.rad,shifted_hs,spos)
-        X,Y =plate2std(cx,cy,-chs[0],-chs[1])
-        ra0,dec0 = std2eq(cmspos.ra.rad,cmspos.dec.rad,X,Y)
+        # First pointing approximation
+        cx, cy = solve_plate_constants(cmspos.ra.rad, cmspos.dec.rad, shifted_hs, spos)
+        X, Y = plate2std(cx, cy, -chs[0], -chs[1])
+        ra0, dec0 = std2eq(cmspos.ra.rad, cmspos.dec.rad, X, Y)
 
-        #Second approximation using pointing from the first
-        cx,cy= solve_plate_constants(ra0,dec0,hs,spos)
-        X,Y =plate2std(cx,cy,0,0) #Now the optical axis is assumed to be at the origin
-        ra,dec = std2eq(ra0,dec0,X,Y)
-        return ra,dec
+        # Second approximation using pointing from the first
+        cx, cy = solve_plate_constants(ra0, dec0, hs, spos)
+        X, Y = plate2std(
+            cx, cy, 0, 0
+        )  # Now the optical axis is assumed to be at the origin
+        ra, dec = std2eq(ra0, dec0, X, Y)
+        return ra, dec
+
 
 def prepare_hotspotmap(hs, bins):
     xm = (np.min(hs[:, 0]) - 0.01, np.max(hs[:, 0]) + 0.01)
@@ -413,7 +417,9 @@ def matchpattern(hotspotmap, hotspots, xlim, ylim, pattern, bins, vmag_lim=None)
     vmag_lim = vmag_lim or np.inf
     vmag_starmask = pattern.sp_vmag < vmag_lim
 
-    angs,star_mask,dbins,hs_bins,star_bins = prepare_pattern_rotations(hotspots,pattern.sp_pos[vmag_starmask])
+    angs, star_mask, dbins, hs_bins, star_bins = prepare_pattern_rotations(
+        hotspots, pattern.sp_pos[vmag_starmask]
+    )
     m = []
     n_stars = []
     # Looping through all rotations and computing number of matches
@@ -469,7 +475,9 @@ def matchpattern_unbinned(hotspots, xlim, ylim, pattern, bins, vmag_lim=None):
     vmag_lim = vmag_lim or np.inf
     vmag_starmask = pattern.sp_vmag < vmag_lim
     sel_star_pos = pattern.sp_pos[vmag_starmask]
-    angs,star_mask,dbins,hs_bins,star_bins = prepare_pattern_rotations(hotspots,sel_star_pos)
+    angs, star_mask, dbins, hs_bins, star_bins = prepare_pattern_rotations(
+        hotspots, sel_star_pos
+    )
 
     m = []
     n_matches = []
@@ -502,7 +510,10 @@ def matchpattern_unbinned(hotspots, xlim, ylim, pattern, bins, vmag_lim=None):
 
                     if dist < 0.009:
                         matched_stars.append(
-                            (hs_ind, pattern.sp_hip[vmag_starmask][star_mask][star_pos_ind])
+                            (
+                                hs_ind,
+                                pattern.sp_hip[vmag_starmask][star_mask][star_pos_ind],
+                            )
                         )
         matched_stars = list(set(matched_stars))
         if len(matched_stars) > 0:
@@ -519,7 +530,8 @@ def matchpattern_unbinned(hotspots, xlim, ylim, pattern, bins, vmag_lim=None):
     else:
         return None
 
-def prepare_pattern_rotations(hotspots,star_pos):
+
+def prepare_pattern_rotations(hotspots, star_pos):
     """Summary
 
     Args:
@@ -531,9 +543,7 @@ def prepare_pattern_rotations(hotspots,star_pos):
     """
     hs_dist = np.linalg.norm(hotspots, axis=1)
     star_dist = np.linalg.norm(star_pos, axis=1)
-    dbins = np.arange(
-        0, np.max(hs_dist) + 0.06, 0.006
-    )
+    dbins = np.arange(0, np.max(hs_dist) + 0.06, 0.006)
 
     hs_dist_hist = dashi.histogram.hist1d(dbins)
     star_dist_hist = dashi.histogram.hist1d(dbins)
@@ -541,7 +551,7 @@ def prepare_pattern_rotations(hotspots,star_pos):
     star_dist_hist.fill(star_dist)
 
     rot_angs = []
-    star_mask = (star_dist < dbins[-1]) #& vmag_starmask
+    star_mask = star_dist < dbins[-1]  # & vmag_starmask
     star_bins = np.digitize(star_dist[star_mask], dbins)
     hs_bins = np.digitize(hs_dist, dbins)
     # We only want to find rotations that will potentially match
@@ -557,7 +567,8 @@ def prepare_pattern_rotations(hotspots,star_pos):
                 rot_angs.append(rotang(spos) - hotspot_rotang)
 
     angs = np.sort(np.array(list(set(rot_angs))))
-    return angs,star_mask,dbins,hs_bins,star_bins
+    return angs, star_mask, dbins, hs_bins, star_bins
+
 
 def std2eq(ra0: float, dec0: float, X: float, Y: float) -> tuple:
     """ Converts Standard plate coordinates to
@@ -640,6 +651,6 @@ def solve_plate_constants(ra0, dec0, hotspots, star_coordinates):
     yx = np.array(yx)
     yy = np.array(yy)
 
-    cx = np.linalg.lstsq(A, yx,rcond=None)[0]
-    cy = np.linalg.lstsq(A, yy,rcond=None)[0]
+    cx = np.linalg.lstsq(A, yx, rcond=None)[0]
+    cy = np.linalg.lstsq(A, yy, rcond=None)[0]
     return cx, cy

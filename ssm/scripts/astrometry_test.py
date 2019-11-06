@@ -64,7 +64,7 @@ matcher = StarPatternMatch.from_location(
 )
 
 
-alt, az = np.deg2rad(73.21-15),  12.1
+alt, az = np.deg2rad(73.21 - 15), 12.1
 
 # az = np.random.uniform(0,2*np.pi)
 # alt = np.arccos(np.random.uniform(0,np.cos(np.pi*alt_min/180.)))
@@ -86,14 +86,10 @@ hotspots[1, :] = hotspots[1, :] + 0.003
 
 matched_hs = matcher.identify_stars(hotspots, horizon_level=30, only_one_it=False)
 
-telescope_pointing = SkyCoord(
-    alt=alt* u.rad,
-    az=az* u.rad,
-    frame=altaz_frame,
-)
-print('True pointing:',telescope_pointing.transform_to('icrs'))
-ra,dec = matcher.determine_pointing(matched_hs)
-print('Estimated pointing:',np.rad2deg(ra),np.rad2deg(dec))
+telescope_pointing = SkyCoord(alt=alt * u.rad, az=az * u.rad, frame=altaz_frame)
+print("True pointing:", telescope_pointing.transform_to("icrs"))
+ra, dec = matcher.determine_pointing(matched_hs)
+print("Estimated pointing:", np.rad2deg(ra), np.rad2deg(dec))
 fig, axs = plt.subplots(constrained_layout=True, figsize=(10, 6))
 # Different average camera images
 camera = CameraImage(xpix, ypix, mapping.GetSize(), ax=axs)
@@ -137,7 +133,7 @@ for mhs in matched_hs:
             hotspots[mhs[2], 0], hotspots[mhs[2], 1], "go", mfc="none", ms=25, mew=1
         )
         correct_id += 1
-telsky = telescope_pointing.transform_to('icrs')
+telsky = telescope_pointing.transform_to("icrs")
 plt.title(
     "Number of hotspots {}, catalog stars {}, correct id {}, wrong id {}\n"
     "True pointing: {:.4f}° RA {:.4f}° DEC, \nEstimatied pointing: {:.4f}° RA, {:.4f}° DEC".format(
@@ -148,7 +144,7 @@ plt.title(
         telsky.ra.deg,
         telsky.dec.deg,
         np.rad2deg(ra[0]),
-        np.rad2deg(dec[0])
+        np.rad2deg(dec[0]),
     )
 )
 plt.show()
