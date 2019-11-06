@@ -137,9 +137,18 @@ for mhs in matched_hs:
             hotspots[mhs[2], 0], hotspots[mhs[2], 1], "go", mfc="none", ms=25, mew=1
         )
         correct_id += 1
+telsky = telescope_pointing.transform_to('icrs')
 plt.title(
-    "Number of hotspots {}, catalog stars{}, correct id {}, wrong id {}".format(
-        len(hotspots), len(hips_in_fov), correct_id, wrong_id
+    "Number of hotspots {}, catalog stars{}, correct id {}, wrong id {}\n"
+    "True pointing: {:.4f}° RA {:.4f}° DEC, \nEstimatied pointing: {:.4f}° RA, {:.4f}° DEC".format(
+        len(hotspots),
+        len(hips_in_fov),
+        correct_id,
+        wrong_id,
+        telsky.ra.deg,
+        telsky.dec.deg,
+        np.rad2deg(ra[0]),
+        np.rad2deg(dec[0])
     )
 )
 plt.show()
