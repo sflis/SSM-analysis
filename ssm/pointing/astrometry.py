@@ -1,6 +1,6 @@
 import numpy as np
 import astropy.units as u
-from numba import jit
+# from numba import jit
 import pickle
 from collections import defaultdict, Counter
 import dashi
@@ -323,7 +323,6 @@ class StarPatternMatch:
                     test_hips = [m[1] for m in match[ind]]
 
             mhs = []
-            mhps = []
             print("Hotspots")
             for hs_i, hs in sorted(matched_hotspots.items()):
                 c = Counter(hs)

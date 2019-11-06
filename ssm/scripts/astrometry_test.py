@@ -64,7 +64,7 @@ matcher = StarPatternMatch.from_location(
 )
 
 
-alt, az = np.deg2rad(73.21 - 15), 12.1
+alt, az = np.deg2rad(73.21 - 25), 12.1
 
 # az = np.random.uniform(0,2*np.pi)
 # alt = np.arccos(np.random.uniform(0,np.cos(np.pi*alt_min/180.)))
