@@ -338,7 +338,7 @@ class StarPatternMatch:
             return mhs
         else:
             print("No Match")
-            return match
+            return None # match
 
     def determine_pointing(self, matched_hotspots):
         hs = []
@@ -419,6 +419,7 @@ def matchpattern(hotspotmap, hotspots, xlim, ylim, pattern, bins, vmag_lim=None)
     angs, star_mask, dbins, hs_bins, star_bins = prepare_pattern_rotations(
         hotspots, pattern.sp_pos[vmag_starmask]
     )
+
     m = []
     n_stars = []
     # Looping through all rotations and computing number of matches
@@ -477,6 +478,7 @@ def matchpattern_unbinned(hotspots, xlim, ylim, pattern, bins, vmag_lim=None):
     angs, star_mask, dbins, hs_bins, star_bins = prepare_pattern_rotations(
         hotspots, sel_star_pos
     )
+
 
     m = []
     n_matches = []
@@ -542,7 +544,7 @@ def prepare_pattern_rotations(hotspots, star_pos):
     """
     hs_dist = np.linalg.norm(hotspots, axis=1)
     star_dist = np.linalg.norm(star_pos, axis=1)
-    dbins = np.arange(0, np.max(hs_dist) + 0.06, 0.006)
+    dbins = np.arange(0, np.max(hs_dist) + 0.09, 0.006)
 
     hs_dist_hist = dashi.histogram.hist1d(dbins)
     star_dist_hist = dashi.histogram.hist1d(dbins)

@@ -64,7 +64,7 @@ matcher = StarPatternMatch.from_location(
 )
 
 
-alt, az = np.deg2rad(73.21 - 25), 12.1
+alt, az = np.deg2rad(73.21 ), 0#12.1
 
 # az = np.random.uniform(0,2*np.pi)
 # alt = np.arccos(np.random.uniform(0,np.cos(np.pi*alt_min/180.)))
@@ -82,9 +82,10 @@ true_hotspots = np.array(hotspots)
 
 hotspots = true_hotspots.copy()
 print(len(hotspots))
-hotspots[1, :] = hotspots[1, :] + 0.003
+N_change = 1
+hotspots[N_change, :] = hotspots[N_change, :] + 0.003
 
-matched_hs = matcher.identify_stars(hotspots, horizon_level=30, only_one_it=False)
+matched_hs = matcher.identify_stars(hotspots, horizon_level=-30, only_one_it=False)
 
 telescope_pointing = SkyCoord(alt=alt * u.rad, az=az * u.rad, frame=altaz_frame)
 print("True pointing:", telescope_pointing.transform_to("icrs"))
