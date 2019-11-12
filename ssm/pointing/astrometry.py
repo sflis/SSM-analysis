@@ -11,6 +11,7 @@ from collections import namedtuple
 import ssm
 import os
 from numpy import sin, cos
+import daiquiri
 
 # @jit(nopython=True)
 def rotang(v1, v2=np.array([1, 0])):
@@ -74,12 +75,12 @@ def generate_hotspots(
             hotspots.append((star_en.x.value, star_en.y.value))
             hip = (i, star_cat.hip_number.values[fov_mask][sind][i])
             hips.append(hip)
-            print(hip, i)
+            # print(hip, i)
             if star_cat.vmag.values[fov_mask][sind][i] < vmag_lim:
                 in_cat_stars.append(hip)
     if len(in_cat_stars) == 0:
         print("no star in catalog for fov")
-    print("number of stars in catalog for fov", len(in_cat_stars))
+    # print("number of stars in catalog for fov", len(in_cat_stars))
     return hotspots, telescope_pointing, fov_mask, in_cat_stars, hips
 
 
@@ -128,7 +129,8 @@ class StarPatternMatch:
         self.stars_above_horizon = self.star_table.hip_number.values[
             altaz_stars.alt.deg > self.horizon_level
         ]
-
+        self.silence = False
+        self.log = daiquiri.getLogger(__name__)
     @classmethod
     def from_location(
         clc,
@@ -142,6 +144,7 @@ class StarPatternMatch:
         vmag_lim,
         minpixdist=5,
     ):
+        log = daiquiri.getLogger(__name__)
         mask = sdt.vmag < vmag_lim
         sdt = sdt[mask]
         stars = stars[mask]
@@ -155,9 +158,13 @@ class StarPatternMatch:
         )
         if os.path.exists(path):
             with open(path, "rb") as f:
-                args = pickle.load(f)
+                try:
+                    args = pickle.load(f)
+                except Exception as e:
+                    log.error('Error occured while loading star patterns from file.',file=f,error=e)
+                    raise e
                 return clc(**args)
-
+        log.info('No previously computed star pattern file found. Generating table now....')
         star_patterns = {}
 
         for k, star in tqdm(enumerate(stars), total=len(stars)):
@@ -204,6 +211,7 @@ class StarPatternMatch:
             star_patterns[hipf] = StarPattern(hipf, vmagf, star, pcs, vmags, hips, k)
 
         with open(path, "wb") as f:
+            log.info('Generated star pattern table saved.',file=f)
             pickle.dump(
                 dict(
                     star_coordinates=stars,
@@ -233,7 +241,7 @@ class StarPatternMatch:
             )
             altaz_stars = self.star_coordinates.transform_to(altaz_frame)
             self.stars_above_horizon_ind = altaz_stars.alt.deg > self.horizon_level
-            self.stars_above_horizon = self.star_table.hip_number.values[
+            self.stars_above_horizon_ind = self.star_table.hip_number.values[
                 self.stars_above_horizon_ind
             ]
 
@@ -252,6 +260,7 @@ class StarPatternMatch:
         hotspotmap, n_hotspots, xm, ym = prepare_hotspotmap(shifted_hs[:10], bins2d)
 
         if n_hotspots < 2:
+            self.log.warn('Not enough hotspots to identify star patterns',n_hotspots=n_hotspots)
             return  # sky_map_missed[index] +=1
 
         self.recumpute_horizon(obstime, horizon_level)
@@ -266,7 +275,7 @@ class StarPatternMatch:
 
         # First iteration
         match = []
-        for hip in tqdm(test_hips, total=len(test_hips)):
+        for hip in tqdm(test_hips, total=len(test_hips),disable=self.silence):
             pattern = self.patterns[hip]
             ret = matchpattern(hotspotmap, hotspots, xm, ym, pattern, bins2d, 5.5)
             if ret is not None:
@@ -290,13 +299,12 @@ class StarPatternMatch:
         m = np.argmax(match_quantity)
         if np.max(match_quantity) / np.mean(match_quantity) > 6:
 
-            print("Matching")
             matchhip = match[m, 0]
             matched_hotspots = defaultdict(list)  # [(hotspots[0],matchhip,0)]
             matchedhips = defaultdict(list)
             test_hips = [int(matchhip)]  # list(self.patterns[int(matchhip)].sp_hip)
 
-            for i in tqdm(range(len(hotspots)), total=len(hotspots)):
+            for i in tqdm(range(len(hotspots)), total=len(hotspots),disable=self.silence):
                 shifted_hs = hotspots - hotspots[i]
                 hotspotmap, n_hotspots, xm, ym = prepare_hotspotmap(shifted_hs, bins2d)
                 match = []
@@ -318,26 +326,25 @@ class StarPatternMatch:
                     for m in match[ind]:
                         matched_hotspots[m[0]].append(m[1])
                         matchedhips[m[1]].append(m[0])
-                    print(f"Matched star  {mhip[ind]} for hotspot {i}")
+                    # print(f"Matched star  {mhip[ind]} for hotspot {i}")
 
                     test_hips = [m[1] for m in match[ind]]
 
             mhs = []
-            print("Hotspots")
             for hs_i, hs in sorted(matched_hotspots.items()):
                 c = Counter(hs)
                 m = c.most_common()
-                print(hs_i, c.most_common())
                 if m[0][1] > 3:
                     mhs.append((hotspots[hs_i], m[0][0], hs_i))
-            print("Stars")
+
             for hs_i, hs in sorted(matchedhips.items()):
                 c = Counter(hs)
                 m = c.most_common()[0]
-                print(hs_i, c.most_common())
+            if len(mhs)==0:
+                self.log.warn('No matching star pattern found.')
             return mhs
         else:
-            print("No Match")
+            self.log.warn('No matching star pattern found.')
             return None # match
 
     def determine_pointing(self, matched_hotspots):
@@ -612,10 +619,10 @@ def plate2std(cx, cy, x, y):
         coordinates
 
     Args:
-        cx (TYPE): Plate constants for x-axis
-        cy (TYPE): Plate constants for y-axis
-        x (TYPE): plate coordinate x
-        y (TYPE): plate coordinate y
+        cx (array_like): Plate constants for x-axis
+        cy (array_like): Plate constants for y-axis
+        x (float): plate coordinate x
+        y (float): plate coordinate y
 
     Returns:
         tuple(float,float): coordinate pair (X,Y)

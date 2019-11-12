@@ -20,8 +20,9 @@ from ssm.pointing.astrometry import (
         generate_hotspots,
         StarPatternMatch,
     )
-
+import objgraph
 import zmq
+import random
 def main(args):
     sdt, stars = load_hipparcos_cat()
     # These will be the stars we see in data
@@ -42,12 +43,7 @@ def main(args):
 
     camera_config = CameraConfiguration("1.1.0")
     mapping = camera_config.GetMapping()
-    # xpix = np.array(mapping.GetXPixVector())  # * u.m
-    # ypix = np.array(mapping.GetYPixVector())  # * u.m
     pos = np.array([np.array(mapping.GetXPixVector()), np.array(mapping.GetYPixVector())])
-    # size = mapping.GetSize() * u.m
-    # area = size ** 2
-    # pix_area = np.full(xpix.size, area) * area.unit
     focal_length = u.Quantity(2.15191, u.m)
 
 
@@ -61,25 +57,31 @@ def main(args):
         vmag_lim=cvmag_lim,
         pixsize=mapping.GetSize(),
     )
-
+    matcher.silence = True
 
     order = 10
     nside = healpy.order2nside(order)
     npix = healpy.nside2npix(nside)
-    # sky_map_found = np.zeros(npix)
     npixs_above_horizon = np.where(healpy.pix2ang(nside,np.arange(npix))[0]>np.pi/2)[0]
 
 
 
     tstamp0 = 1557360406
-    # writer = FrameWriter('AstrometryAssessment.icf')
     np.random.seed(args.seed)
     context = zmq.Context()
     socket = context.socket(zmq.PUB)
     ip = '127.0.0.1'
     con_str = "tcp://%s:" % ip + str(args.port)
     socket.connect(con_str)
+    # print("*******************************")
+    # objgraph.show_growth(limit=11)
+    # objs = []
+    obstime = Time(tstamp0+np.random.uniform(-43200,43200),format='unix')
+    pixsize = mapping.GetSize()
     for i in range(args.n_iterations):
+        print(f"Sample: {i}", flush=True)
+        # del altaz_frame
+        # del obstime
         obstime = Time(tstamp0+np.random.uniform(-43200,43200),format='unix')
         altaz_frame = AltAz(location=location, obstime=obstime)
         # alt, az = np.deg2rad(73.21 ), 0#12.1
@@ -95,10 +97,11 @@ def main(args):
             altaz_frame,
             source_stars,
             source_star_table,
-            mapping.GetSize(),
+            pixsize,
             cvmag_lim,
             pos,
         )
+
         true_hotspots = np.array(hotspots)
         frame = Frame()
         frame.add('hips_in_fov', np.array(hips_in_fov))
@@ -110,19 +113,27 @@ def main(args):
         N_change = 1
         hotspots[N_change, :] = hotspots[N_change, :] + 0.003
 
-        matched_hs = matcher.identify_stars(hotspots, horizon_level=5, only_one_it=False)
+        matched_hs = matcher.identify_stars(hotspots, horizon_level=5, obstime=obstime, only_one_it=False)
         if matched_hs is not None and len(matched_hs)>0:
         # telescope_pointing = SkyCoord(alt=alt * u.rad, az=az * u.rad, frame=altaz_frame)
             ra, dec = matcher.determine_pointing(matched_hs)
             frame.add('matched_hs', np.array(matched_hs))
             frame.add('est_pointing', np.array([ra,dec]))
 
+        # objs += []
+        # print(frame)
         socket.send(frame.serialize())
+        # print("*******************************")
+        # objgraph.show_growth(limit=40)
+#     objgraph.show_refs(objs+[matcher,stars,source_star_table,altaz_frame,obstime],filename='sample-graph.png')
+#     objgraph.show_backrefs(objs+[matcher,stars,source_star_table],filename='frame-backref-graph.png')
+#     objgraph.show_chain(
 
-        # writer.write(frame)
-
-#
-    # writer.close()
+#         objgraph.find_backref_chain(
+#             objgraph.by_type('dict')[0],
+#             objgraph.is_proper_module),
+#     filename='chain.png')
+# #
 
 
 

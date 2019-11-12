@@ -149,10 +149,8 @@ class ClusterReduction(ProcessingModule):
             # a cluster with at least two of the pixels having
             # a derivate of more than 1
             if len(d1) > 1 and (np.sum(d1 > 1.0) > 1):
-                print("HERE")
                 splclusters.append(splclusterdata)
                 reduced_clusters.append(clusterdata)
-        print("HERE2", len(reduced_clusters))
         frame[self.out_data] = reduced_clusters
         frame[self.out_cluster_spl] = splclusters
         frame[self.out_time] = rtime
