@@ -58,13 +58,13 @@ matcher = StarPatternMatch.from_location(
     sdt=sdt,
     fov=12,
     focal_length=focal_length,
-    min_alt=-90,
+    min_alt=0,
     vmag_lim=cvmag_lim,
     pixsize=mapping.GetSize(),
 )
 
 
-alt, az = np.deg2rad(73.21 ), 10#12.1
+alt, az = np.deg2rad(13.21 ), 110#12.1
 
 # az = np.random.uniform(0,2*np.pi)
 # alt = np.arccos(np.random.uniform(0,np.cos(np.pi*alt_min/180.)))
@@ -81,15 +81,19 @@ hotspots, tel_pointing, star_ind, hips_in_fov, all_hips = generate_hotspots(
 true_hotspots = np.array(hotspots)
 
 hotspots = true_hotspots.copy()
-print(len(hotspots))
+print(len(hotspots),len(hips_in_fov))
 N_change = 1
-hotspots[N_change, :] = hotspots[N_change, :] + 0.003
+# hotspots[N_change, :] = hotspots[N_change, :] + 0.003
 
-matched_hs = matcher.identify_stars(hotspots, horizon_level=-30, only_one_it=False)
+matched_hs = matcher.identify_stars(hotspots, horizon_level=-90, only_one_it=False)
 
 telescope_pointing = SkyCoord(alt=alt * u.rad, az=az * u.rad, frame=altaz_frame)
 print("True pointing:", telescope_pointing.transform_to("icrs"))
-ra, dec = matcher.determine_pointing(matched_hs)
+if matched_hs is None or len(matched_hs)==0:
+    ra = dec = np.nan
+    matched_hs = []
+else:
+    ra, dec = matcher.determine_pointing(matched_hs)
 print("Estimated pointing:", np.rad2deg(ra), np.rad2deg(dec))
 fig, axs = plt.subplots(constrained_layout=True, figsize=(10, 6))
 # Different average camera images
@@ -144,8 +148,8 @@ plt.title(
         wrong_id,
         telsky.ra.deg,
         telsky.dec.deg,
-        np.rad2deg(ra[0]),
-        np.rad2deg(dec[0]),
+        np.rad2deg(ra),
+        np.rad2deg(dec),
     )
 )
 plt.show()

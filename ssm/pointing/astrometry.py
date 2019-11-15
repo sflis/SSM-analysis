@@ -348,7 +348,7 @@ class StarPatternMatch:
             cx, cy, 0, 0
         )  # Now the optical axis is assumed to be at the origin
         ra, dec = std2eq(ra0, dec0, X, Y)
-        return ra, dec
+        return float(ra), float(dec)
 
 
 ######################################################################
@@ -490,11 +490,6 @@ def matchpattern(hotspotmap, hotspots, xlim, ylim, pattern, bins, vmag_lim=None)
     hotspots = np.empty((hs_x.shape[0],2))
     hotspots[:,0] = hs_x
     hotspots[:,1] = hs_y
-    #hotspotmap.bincenters[1][hotspot_i[1]]
-
-    # hotspots = np.array(
-    #     [x,y ]
-    # ).T
 
     vmag_lim = vmag_lim or np.inf
     vmag_starmask = pattern.sp_vmag < vmag_lim
@@ -527,17 +522,12 @@ def matchpattern(hotspotmap, hotspots, xlim, ylim, pattern, bins, vmag_lim=None)
         fh = patternmap.bincontent.flatten()
         fh[hm.flatten()] = 1
         patternmap.bincontent[:] = fh.reshape(patternmap.bincontent.shape)
-        # patternmap.bincontent[patternmap.bincontent > 1] = 1
 
         proj = hotspotmap.bincontent - patternmap.bincontent
         m[i] = np.sum(proj.flatten()[(proj > 0).flatten()])
         n_stars[i] = np.sum(cam_fov_mask)
-        # if s < n_hotspots:
-        #     m.append(s)
-        #     n_stars.append(np.sum(cam_fov_mask))
 
     if len(m) > 0:
-        # m = np.array(m)
         minind = np.argmin(m)
         minm = m[minind]
         minn_stars = n_stars[minind]
