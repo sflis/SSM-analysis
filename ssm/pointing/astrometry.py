@@ -12,55 +12,6 @@ import ssm
 import os
 from numpy import sin, cos
 import daiquiri
-hist1dtupl = namedtuple('Hist1d','bincontent binedges bincenters binwidths')
-hist2dtupl = namedtuple('Hist2d','bincontent binedges bincenters binwidths')
-
-# @jit(nopython=True)
-def hist1d(data,bins):
-
-    hist,binedges = np.histogram(data,bins)
-    binwidths = np.diff(binedges)
-    bincenters = binedges[:-1] + binwidths/2
-
-    return hist1dtupl(hist,binedges,bincenters,[binwidths])
-
-# @jit(nopython=True)
-def hist2d(data,bins):
-    data = np.asarray(data)
-
-    hist,binedgesx,binedgesy = np.histogram2d(data[:,0],data[:,1],bins)
-    binwidths = [np.diff(binedgesx),np.diff(binedgesx)]
-    bincentersx = binedgesx[:-1] + binwidths[0]/2
-    bincentersy = binedgesy[:-1] + binwidths[1]/2
-    return hist2dtupl(hist,[binedgesx,binedgesy],[bincentersx,bincentersy],binwidths)
-
-@jit(nopython=True)
-def rotang(v1, v2=np.array([1, 0])):
-    """Returns the angle between v1 and v2
-
-    Args:
-        v1 (array): The point on the plane to rotate from
-        v2 (array, optional): The point on the plane to rotate to
-
-    Returns:
-        float: rotation angle in radians
-    """
-    return np.arctan2(v2[1], v2[0]) - np.arctan2(v1[1], v1[0])
-
-
-@jit(nopython=True)
-def rot_matrix(rot_ang):
-    """ Returns a rotation matrix for the given
-        an rotation angle `rot_ang`.
-
-    Args:
-        rot_ang (float): rotational angle
-
-    Returns:
-        array: rotation matrix
-    """
-
-    return np.array([[cos(rot_ang), -sin(rot_ang)], [sin(rot_ang), cos(rot_ang)]])
 
 
 def generate_hotspots(
@@ -378,7 +329,7 @@ class StarPatternMatch:
             spos.append(
                 self.star_coordinates[np.where(h[1] == self.star_table.hip_number)[0]]
             )
-
+        print(hs)
         # Shifting image center for first pointing approximation to most
         # center identified hotspot
         centermost_hs = np.argmin(np.linalg.norm(hs, axis=1))
@@ -399,7 +350,118 @@ class StarPatternMatch:
         ra, dec = std2eq(ra0, dec0, X, Y)
         return ra, dec
 
-# @jit(nopython=True)
+
+######################################################################
+##########################Functions###################################
+######################################################################
+
+Hist1d = namedtuple('Hist1d','bincontent binedges bincenters binwidths')
+Hist2d = namedtuple('Hist2d','bincontent binedges bincenters binwidths')
+
+
+@jit(nopython=True, cache=True)
+def hist1d(data,bins):
+    """ Creates a 1D histogram of the provided data (accelerated with numba)
+
+    Args:
+        data (ndarray): 1D array containing the data to be histogrammed
+        bins (ndarray): 1D array containing the binedges of the histogram
+
+    Returns:
+        Hist1d: A histogram object (namedtuple) containing the histogramed
+                data and other fields describing the histogram
+
+    """
+    d_indices = np.digitize(data,bins)
+    hist = np.zeros(bins.shape[0]-1)
+    for i in range(data.shape[0]):
+        hist[d_indices[i]-1] += 1
+    binwidths = np.diff(bins)
+    bincenters = bins[:-1] + binwidths/2
+    return Hist1d(bincontent=hist,
+                        binedges=bins,
+                        bincenters=bincenters,
+                        binwidths=[binwidths]
+                        )
+
+@jit(nopython=True)
+def hist2d(data,bins):
+    """ Creates a 2D histogram of the provided data (accelerated with numba)
+
+    Args:
+        data (ndarray): 2D array containing the data to be histogrammed
+        bins (ndarray): 2D array containing the binedges of the histogram
+
+    Returns:
+        Hist2d: A histogram object (namedtuple) containing the histogramed
+                data and other fields describing the histogram
+
+    """
+
+    data = np.asarray(data)
+    hist = np.zeros((bins[0].shape[0]-1,bins[1].shape[0]-1))
+    d_indicesx = np.digitize(data[:,0],bins[0])
+    d_indicesy = np.digitize(data[:,1],bins[1])
+    for i in range(len(d_indicesy)):
+        hist[d_indicesx[i]-1,d_indicesy[i]-1] += 1
+    binedgesx,binedgesy=bins[0],bins[1]
+    binwidths = [np.diff(binedgesx),np.diff(binedgesx)]
+    bincentersx = binedgesx[:-1] + binwidths[0]/2
+    bincentersy = binedgesy[:-1] + binwidths[1]/2
+    return Hist2d(bincontent=hist,
+                    binedges=[binedgesx,binedgesy],
+                    bincenters=[bincentersx,bincentersy],
+                    binwidths=binwidths)
+
+# def hist1d(data,bins):
+
+#     hist,binedges = np.histogram(data,bins)
+#     binwidths = np.diff(binedges)
+#     bincenters = binedges[:-1] + binwidths/2
+
+#     return Hist1d(hist,binedges,bincenters,[binwidths])
+
+
+# def hist2d(data,bins):
+#     data = np.asarray(data)
+#     hist,binedgesx,binedgesy = np.histogram2d(data[:,0],data[:,1],bins)
+#     binwidths = [np.diff(binedgesx),np.diff(binedgesx)]
+#     bincentersx = binedgesx[:-1] + binwidths[0]/2
+#     bincentersy = binedgesy[:-1] + binwidths[1]/2
+#     return Hist2d(hist,[binedgesx,binedgesy],[bincentersx,bincentersy],binwidths)
+
+@jit(nopython=True, cache=True)
+def rotang(v1, v2=np.array([1, 0])):
+    """Returns the angle between v1 and v2
+
+    Args:
+        v1 (array): The point on the plane to rotate from
+        v2 (array, optional): The point on the plane to rotate to
+
+    Returns:
+        float: rotation angle in radians
+    """
+    return np.arctan2(v2[1], v2[0]) - np.arctan2(v1[1], v1[0])
+
+
+@jit(nopython=True, cache=True)
+def rot_matrix(rot_ang):
+    """ Returns a rotation matrix for the given
+        an rotation angle `rot_ang`.
+
+    Args:
+        rot_ang (float): rotational angle
+
+    Returns:
+        array: rotation matrix
+    """
+
+    return np.array([[cos(rot_ang), -sin(rot_ang)], [sin(rot_ang), cos(rot_ang)]])
+
+
+
+
+@jit(nopython=True, cache=True)
 def prepare_hotspotmap(hs, bins):
     xm = (np.min(hs[:, 0]) - 0.01, np.max(hs[:, 0]) + 0.01)
     ym = (np.min(hs[:, 1]) - 0.01, np.max(hs[:, 1]) + 0.01)
@@ -407,7 +469,7 @@ def prepare_hotspotmap(hs, bins):
     bw = hotspotmap.binwidths[0][0]
     m = hotspotmap.bincontent > 1
 
-    hotspotmap.bincontent[m] = 1
+    # hotspotmap.bincontent[m] = 1
     n_hotspots = np.sum(hotspotmap.bincontent)
     #spreading out the hotspots in their
     #neighboring bins
@@ -416,11 +478,11 @@ def prepare_hotspotmap(hs, bins):
               tmpmap = hist2d(hs,bins)
               hotspotmap.bincontent[:] +=tmpmap.bincontent
     m = hotspotmap.bincontent > 1
-    hotspotmap.bincontent[m] = 1
+    # hotspotmap.bincontent[m] = 1
     return hotspotmap, n_hotspots, xm, ym
 
 
-# @jit(nopython=True)
+# @jit(nopython=True, cache=True)
 def matchpattern(hotspotmap, hotspots, xlim, ylim, pattern, bins, vmag_lim=None):
     """Summary
 
@@ -561,37 +623,59 @@ def matchpattern_unbinned(hotspots, xlim, ylim, pattern, bins, vmag_lim=None):
     else:
         return None
 
-@jit(nopython=True)
+@jit(nopython=True, cache=True)
 def norm_row(arr):
+    """ Computes the norm on a 2D array across the 2nd axis.
+
+        This function is equivalent to np.linalg.norm(arr,axis=1),
+        but unlike the mentioned function this function can be
+        compiled with numba to be used in other functions that
+        are compiled.
+    Args:
+        arr (array_like): a 2D array to be normed
+
+    Returns:
+        ndarray: A 1D array containing the norm of each row
+                 in the input array arr.
+    """
     norms = np.empty(arr.shape[0])
     for i in range(arr.shape[0]):
         norms[i] = np.linalg.norm(arr[i,:])
     return norms
 
-@jit(nopython=True)
+@jit(nopython=True, cache=True)
 def prepare_pattern_rotations(hotspots, star_pos):
-    """Summary
+    """ Finds all rotations of a star pattern that potentially matches at least one star.
+
+        Determines which rotations of the star positions in
+        star_pos will potentially match at least one of the hotspot
+        positions in hotspots.
 
     Args:
-        hotspots (TYPE): Description
-        star_pos (TYPE): Description
+        hotspots (array_like): hotspot positions
+        star_pos (array_like): star positions in star pattern
 
     Returns:
-        TYPE: Description
+        tuple: rotation angles for star patterns,
+               mask of stars in the  pattern that can potentially match a hotspot,
+               bins in the distance histogram,
+               bin indices for the hotspots,
+               bin indices for the stars in the star pattern
     """
     hs_dist = norm_row(hotspots)
     star_dist = norm_row(star_pos)
     dbins = np.arange(0, np.max(hs_dist) + 0.09, 0.006)
 
     rot_angs = []
-    star_mask = star_dist < dbins[-1]  # & vmag_starmask
-    star_bins = np.digitize(star_dist[star_mask], dbins)
-    hs_bins = np.digitize(hs_dist, dbins)
+    star_mask = star_dist < dbins[-1]
+    star_bins = np.digitize(star_dist[star_mask], dbins)-1
+    hs_bins = np.digitize(hs_dist, dbins)-1
     # We only want to find rotations that will potentially match
     # at least one star with one hotspot, therefore we only
     # rotate the pattern to hotspots that are at roghly the same
     # distance as some star in the pattern
     for bin_i in range(1, dbins.shape[0]):
+        # Always looking at two neigboring bins
         hs_bin_mask = (hs_bins == bin_i) | (hs_bins == (bin_i - 1))
         star_bin_mask = (star_bins == bin_i) | (star_bins == (bin_i - 1))
         for i in range(hotspots[np.where(hs_bin_mask)[0]].shape[0]):
@@ -604,7 +688,7 @@ def prepare_pattern_rotations(hotspots, star_pos):
     angs = np.sort(np.array(list(set(rot_angs))))
     return angs, star_mask, dbins, hs_bins, star_bins
 
-
+@jit(nopython=True, cache=True)
 def std2eq(ra0: float, dec0: float, X: float, Y: float) -> tuple:
     """ Converts Standard plate coordinates to
         Equatorial coordinates
@@ -622,7 +706,7 @@ def std2eq(ra0: float, dec0: float, X: float, Y: float) -> tuple:
     dec = np.arcsin(sin(dec0) + Y * cos(dec0)) / np.sqrt(1.0 + X * X + Y * Y)
     return ra, dec
 
-
+@jit(nopython=True, cache=True)
 def eq2std(ra0: float, dec0: float, ra: float, dec: float) -> tuple:
     """ Converts Equatorial coordinates to Standard plate coordinates
 
@@ -640,7 +724,7 @@ def eq2std(ra0: float, dec0: float, ra: float, dec: float) -> tuple:
     Y = -(sin(dec0) * cos(dec) * cos(ra - ra0) - cos(dec0) * sin(dec)) / c
     return X, Y
 
-
+@jit(nopython=True, cache=True)
 def plate2std(cx, cy, x, y):
     """ Converts plate coordinates to Standard plate
         coordinates
@@ -658,7 +742,7 @@ def plate2std(cx, cy, x, y):
     Y = cy[0] * x + cy[1] * y + cy[2]
     return X, Y
 
-
+# @jit(nopython=True, cache=True)
 def solve_plate_constants(ra0, dec0, hotspots, star_coordinates):
     """Summary
 
@@ -679,6 +763,7 @@ def solve_plate_constants(ra0, dec0, hotspots, star_coordinates):
     yx = []
     yy = []
     for spos in star_coordinates:
+
         X, Y = eq2std(ra0, dec0, spos.ra.rad, spos.dec.rad)
         yx.append(X)
         yy.append(Y)
