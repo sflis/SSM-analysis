@@ -2,6 +2,7 @@ import numpy as np
 from collections import namedtuple
 import astropy.units as u
 from numba import jit
+from numba import vectorize, float64
 import pickle
 from collections import defaultdict, Counter
 from ctapipe.coordinates import EngineeringCameraFrame, AltAz
@@ -180,7 +181,7 @@ class StarPatternMatch:
             hips = np.array([p[1] for p in pattern], dtype=np.uint32)
             pcs = np.array([p[0] for p in pattern])
 
-            star_patterns[hipf] = StarPattern(hipf, vmagf, star, pcs, vmags, hips, k)
+            star_patterns[hipf] = StarPattern(hipf, vmagf, np.array([star.ra.rad,star.dec.rad]), pcs, vmags, hips, k)
 
         with open(path, "wb") as f:
             log.info('Generated star pattern table saved.',file=f)
@@ -329,7 +330,6 @@ class StarPatternMatch:
             spos.append(
                 self.star_coordinates[np.where(h[1] == self.star_table.hip_number)[0]]
             )
-        print(hs)
         # Shifting image center for first pointing approximation to most
         # center identified hotspot
         centermost_hs = np.argmin(np.linalg.norm(hs, axis=1))
@@ -413,23 +413,6 @@ def hist2d(data,bins):
                     bincenters=[bincentersx,bincentersy],
                     binwidths=binwidths)
 
-# def hist1d(data,bins):
-
-#     hist,binedges = np.histogram(data,bins)
-#     binwidths = np.diff(binedges)
-#     bincenters = binedges[:-1] + binwidths/2
-
-#     return Hist1d(hist,binedges,bincenters,[binwidths])
-
-
-# def hist2d(data,bins):
-#     data = np.asarray(data)
-#     hist,binedgesx,binedgesy = np.histogram2d(data[:,0],data[:,1],bins)
-#     binwidths = [np.diff(binedgesx),np.diff(binedgesx)]
-#     bincentersx = binedgesx[:-1] + binwidths[0]/2
-#     bincentersy = binedgesy[:-1] + binwidths[1]/2
-#     return Hist2d(hist,[binedgesx,binedgesy],[bincentersx,bincentersy],binwidths)
-
 @jit(nopython=True, cache=True)
 def rotang(v1, v2=np.array([1, 0])):
     """Returns the angle between v1 and v2
@@ -482,7 +465,7 @@ def prepare_hotspotmap(hs, bins):
     return hotspotmap, n_hotspots, xm, ym
 
 
-# @jit(nopython=True, cache=True)
+@jit(nopython=True, cache=True)
 def matchpattern(hotspotmap, hotspots, xlim, ylim, pattern, bins, vmag_lim=None):
     """Summary
 
@@ -502,9 +485,16 @@ def matchpattern(hotspotmap, hotspots, xlim, ylim, pattern, bins, vmag_lim=None)
 
     n_hotspots = np.sum(hotspotmap.bincontent)
     hotspot_i = np.where(hotspotmap.bincontent > 0)
-    hotspots = np.array(
-        [hotspotmap.bincenters[0][hotspot_i[0]], hotspotmap.bincenters[1][hotspot_i[1]]]
-    ).T
+    hs_x = hotspotmap.bincenters[0][hotspot_i[0]]
+    hs_y = hotspotmap.bincenters[1][hotspot_i[1]]
+    hotspots = np.empty((hs_x.shape[0],2))
+    hotspots[:,0] = hs_x
+    hotspots[:,1] = hs_y
+    #hotspotmap.bincenters[1][hotspot_i[1]]
+
+    # hotspots = np.array(
+    #     [x,y ]
+    # ).T
 
     vmag_lim = vmag_lim or np.inf
     vmag_starmask = pattern.sp_vmag < vmag_lim
@@ -513,10 +503,11 @@ def matchpattern(hotspotmap, hotspots, xlim, ylim, pattern, bins, vmag_lim=None)
         hotspots, pattern.sp_pos[vmag_starmask]
     )
 
-    m = []
-    n_stars = []
+    m = np.zeros(angs.shape[0])
+    n_stars = np.zeros(angs.shape[0])
+
     # Looping through all rotations and computing number of matches
-    for n in angs:
+    for i,n in enumerate(angs):
 
         rm = rot_matrix(n)
         rot_stars = np.dot(rm, pattern.sp_pos.T).T
@@ -529,25 +520,35 @@ def matchpattern(hotspotmap, hotspots, xlim, ylim, pattern, bins, vmag_lim=None)
             & (rot_stars[:, 1] < ylim[1])
         )
         patternmap =hist2d(rot_stars[cam_fov_mask],bins)
-        # Do not double count stars in the same bin
-        patternmap.bincontent[patternmap.bincontent > 1] = 1
-        proj = hotspotmap.bincontent - patternmap.bincontent
-        s = np.sum(proj[proj > 0])
 
-        if s < n_hotspots:
-            m.append(s)
-            n_stars.append(np.sum(cam_fov_mask))
+        # Do not double count stars in the same bin
+        # Maybe there is an easier way to index a ndarray in numba?
+        hm = patternmap.bincontent > 1
+        fh = patternmap.bincontent.flatten()
+        fh[hm.flatten()] = 1
+        patternmap.bincontent[:] = fh.reshape(patternmap.bincontent.shape)
+        # patternmap.bincontent[patternmap.bincontent > 1] = 1
+
+        proj = hotspotmap.bincontent - patternmap.bincontent
+        m[i] = np.sum(proj.flatten()[(proj > 0).flatten()])
+        n_stars[i] = np.sum(cam_fov_mask)
+        # if s < n_hotspots:
+        #     m.append(s)
+        #     n_stars.append(np.sum(cam_fov_mask))
 
     if len(m) > 0:
+        # m = np.array(m)
         minind = np.argmin(m)
         minm = m[minind]
         minn_stars = n_stars[minind]
-
-        return n_hotspots - minm, minn_stars
+        if minn_stars>0:
+            return n_hotspots - minm, minn_stars
+        else:
+            None
     else:
         return None
 
-# @jit(forceobj=True)
+@jit(nopython=True, cache=True)
 def matchpattern_unbinned(hotspots, xlim, ylim, pattern, bins, vmag_lim=None):
     """Summary
 
@@ -556,15 +557,15 @@ def matchpattern_unbinned(hotspots, xlim, ylim, pattern, bins, vmag_lim=None):
         xlim (tuple): Description
         ylim (tuple): Description
         pattern (StarPattern): Description
-        bins (2-D array): Description
+        bins (ndarray): 2D
         vmag_lim (None, optional): Description
 
     Returns:
         TYPE: Description
 
     """
-
-    vmag_lim = vmag_lim or np.inf
+    if vmag_lim is None:
+        vmag_lim =  np.inf
     vmag_starmask = pattern.sp_vmag < vmag_lim
     sel_star_pos = pattern.sp_pos[vmag_starmask]
     angs, star_mask, dbins, hs_bins, star_bins = prepare_pattern_rotations(
@@ -615,7 +616,7 @@ def matchpattern_unbinned(hotspots, xlim, ylim, pattern, bins, vmag_lim=None):
             n_stars.append(np.sum(cam_fov_mask))
             m_angs.append(n)
     if len(m) > 0:
-        minind = np.argmax(n_matches)
+        minind = np.argmax(np.array(list(n_matches)))
         minm = m[minind]
         minn_stars = n_stars[minind]
 
@@ -685,7 +686,7 @@ def prepare_pattern_rotations(hotspots, star_pos):
                 spos = star_pos[star_mask][np.where(star_bin_mask)[0]][j,:]
                 rot_angs.append(rotang(spos) - hotspot_rotang)
 
-    angs = np.sort(np.array(list(set(rot_angs))))
+    angs = np.sort(np.array(list(set(rot_angs)))) #using set to remove duplicate angles
     return angs, star_mask, dbins, hs_bins, star_bins
 
 @jit(nopython=True, cache=True)
