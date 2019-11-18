@@ -209,6 +209,7 @@ class StarPatternMatch:
         return clc(stars, sdt, star_patterns, pixsize, minpixdist, engineering_frame)
 
     def recumpute_horizon(self, obstime, horizon_level):
+
         recumpute = False
         if obstime is not None and obstime != self.obstime:
             self.obstime = obstime
@@ -218,12 +219,13 @@ class StarPatternMatch:
             recumpute = True
 
         if recumpute:
+            self.log.info("recomputing horizon and star selection")
             altaz_frame = AltAz(
                 location=self.engineering_frame.location, obstime=self.obstime
             )
             altaz_stars = self.star_coordinates.transform_to(altaz_frame)
             self.stars_above_horizon_ind = altaz_stars.alt.deg > self.horizon_level
-            self.stars_above_horizon_ind = self.star_table.hip_number.values[
+            self.stars_above_horizon = self.star_table.hip_number.values[
                 self.stars_above_horizon_ind
             ]
 
