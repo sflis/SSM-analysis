@@ -65,7 +65,10 @@ matcher = StarPatternMatch.from_location(
 
 
 alt, az = np.deg2rad(13.21), 110  # 12.1
-
+alt, az = np.deg2rad(73.21), 0  # 12.1
+time_stamp ,alt,az = 1557362902.5210667, 1.1237636930813857, 4.602709354050866 #1557343327.5342753, 0.5482479003046035, 5.282641255134235# 1557379442.0362334, 0.015149983789129767, 2.9349089263799386
+obstime = Time(time_stamp, format="unix")
+altaz_frame = AltAz(location=location, obstime=obstime)
 # az = np.random.uniform(0,2*np.pi)
 # alt = np.arccos(np.random.uniform(0,np.cos(np.pi*alt_min/180.)))
 hotspots, tel_pointing, star_ind, hips_in_fov, all_hips = generate_hotspots(
@@ -84,72 +87,85 @@ hotspots = true_hotspots.copy()
 print(len(hotspots), len(hips_in_fov))
 N_change = 1
 # hotspots[N_change, :] = hotspots[N_change, :] + 0.003
+check_matching_quantities = True
+matched_hs = matcher.identify_stars(hotspots,
+                                    obstime=obstime,
+                                    horizon_level=0,
+                                    only_one_it=check_matching_quantities)
 
-matched_hs = matcher.identify_stars(hotspots, horizon_level=-90, only_one_it=False)
-
-telescope_pointing = SkyCoord(alt=alt * u.rad, az=az * u.rad, frame=altaz_frame)
-print("True pointing:", telescope_pointing.transform_to("icrs"))
-if matched_hs is None or len(matched_hs) == 0:
-    ra = dec = np.nan
-    matched_hs = []
+if check_matching_quantities:
+    match = np.array(matched_hs)
+    match_quantity = match[:, 2] * match[:, 3] * match[:, 1]
+    plt.plot(match_quantity, 'ob')
+    print(len(match))
+    print(all_hips[0][1])
+    print(np.where(match[:, 0] == all_hips[0][1])[0])
+    index = np.where(match[:, 0] == all_hips[0][1])[0]
+    plt.plot(index, match_quantity[index], 'or')
 else:
-    ra, dec = matcher.determine_pointing(matched_hs)
-print("Estimated pointing:", np.rad2deg(ra), np.rad2deg(dec))
-fig, axs = plt.subplots(constrained_layout=True, figsize=(10, 6))
-# Different average camera images
-camera = CameraImage(xpix, ypix, mapping.GetSize(), ax=axs)
-camera.image = np.ones(2048)
-axs.plot(true_hotspots[0, 0], true_hotspots[0, 1], "ob")
-axs.plot(
-    true_hotspots[:, 0],
-    true_hotspots[:, 1],
-    "o",
-    color="gray",
-    mfc="none",
-    ms=25,
-    mew=2,
-)
-for ths, hs in zip(true_hotspots, hotspots):
-    if tuple(ths) != tuple(hs):
-        axs.plot(hs[0], hs[1], "yo", mfc="none", ms=25, mew=3)
-for i, sid in enumerate(all_hips):
-    # i = sid[0]
-    hip = sid[1]
-    plt.annotate(
-        "{}".format(hip), (true_hotspots[i, 0], true_hotspots[i, 1]), color="r"
-    )
-correct_id = 0
-wrong_id = 0
-for mhs in matched_hs:
-    xy = mhs[0]
-    # print(xy)
-    textxy = xy - np.array([0.01, 0.01])
-    plt.annotate(
-        "{}".format(int(mhs[1])), (xy[0], xy[1]), (textxy[0], textxy[1]), color="w"
-    )
-    # print(all_hips[mhs[2]], mhs[2], int(mhs[1]))
-    if all_hips[mhs[2]][1] != int(mhs[1]):
-        axs.plot(
-            hotspots[mhs[2], 0], hotspots[mhs[2], 1], "ro", mfc="none", ms=25, mew=1
-        )
-        wrong_id += 1
+    telescope_pointing = SkyCoord(alt=alt * u.rad, az=az * u.rad, frame=altaz_frame)
+    print("True pointing:", telescope_pointing.transform_to("icrs"))
+    if matched_hs is None or len(matched_hs) == 0:
+        ra = dec = np.nan
+        matched_hs = []
     else:
-        axs.plot(
-            hotspots[mhs[2], 0], hotspots[mhs[2], 1], "go", mfc="none", ms=25, mew=1
-        )
-        correct_id += 1
-telsky = telescope_pointing.transform_to("icrs")
-plt.title(
-    "Number of hotspots {}, catalog stars {}, correct id {}, wrong id {}\n"
-    "True pointing: {:.4f}° RA {:.4f}° DEC, \nEstimatied pointing: {:.4f}° RA, {:.4f}° DEC".format(
-        len(hotspots),
-        len(hips_in_fov),
-        correct_id,
-        wrong_id,
-        telsky.ra.deg,
-        telsky.dec.deg,
-        np.rad2deg(ra),
-        np.rad2deg(dec),
+        ra, dec = matcher.determine_pointing(matched_hs)
+    print("Estimated pointing:", np.rad2deg(ra), np.rad2deg(dec))
+    fig, axs = plt.subplots(constrained_layout=True, figsize=(10, 6))
+    # Different average camera images
+    camera = CameraImage(xpix, ypix, mapping.GetSize(), ax=axs)
+    camera.image = np.ones(2048)
+    axs.plot(true_hotspots[0, 0], true_hotspots[0, 1], "ob")
+    axs.plot(
+        true_hotspots[:, 0],
+        true_hotspots[:, 1],
+        "o",
+        color="gray",
+        mfc="none",
+        ms=25,
+        mew=2,
     )
-)
+    for ths, hs in zip(true_hotspots, hotspots):
+        if tuple(ths) != tuple(hs):
+            axs.plot(hs[0], hs[1], "yo", mfc="none", ms=25, mew=3)
+    for i, sid in enumerate(all_hips):
+        # i = sid[0]
+        hip = sid[1]
+        plt.annotate(
+            "{}".format(hip), (true_hotspots[i, 0], true_hotspots[i, 1]), color="r"
+        )
+    correct_id = 0
+    wrong_id = 0
+    for mhs in matched_hs:
+        xy = mhs[0]
+        # print(xy)
+        textxy = xy - np.array([0.01, 0.01])
+        plt.annotate(
+            "{}".format(int(mhs[1])), (xy[0], xy[1]), (textxy[0], textxy[1]), color="w"
+        )
+        # print(all_hips[mhs[2]], mhs[2], int(mhs[1]))
+        if all_hips[mhs[2]][1] != int(mhs[1]):
+            axs.plot(
+                hotspots[mhs[2], 0], hotspots[mhs[2], 1], "ro", mfc="none", ms=25, mew=1
+            )
+            wrong_id += 1
+        else:
+            axs.plot(
+                hotspots[mhs[2], 0], hotspots[mhs[2], 1], "go", mfc="none", ms=25, mew=1
+            )
+            correct_id += 1
+    telsky = telescope_pointing.transform_to("icrs")
+    plt.title(
+        "Number of hotspots {}, catalog stars {}, correct id {}, wrong id {}\n"
+        "True pointing: {:.4f}° RA {:.4f}° DEC, \nEstimatied pointing: {:.4f}° RA, {:.4f}° DEC".format(
+            len(hotspots),
+            len(hips_in_fov),
+            correct_id,
+            wrong_id,
+            telsky.ra.deg,
+            telsky.dec.deg,
+            np.rad2deg(ra),
+            np.rad2deg(dec),
+        )
+    )
 plt.show()

@@ -67,7 +67,8 @@ def main(args):
     pixsize = mapping.GetSize()
     for i in range(args.n_iterations):
         print(f"Sample: {i}", flush=True)
-        obstime = Time(tstamp0 + np.random.uniform(-43200, 43200), format="unix")
+        tmp_timestamp = tstamp0 + np.random.uniform(-43200, 43200)
+        obstime = Time(tmp_timestamp, format="unix")
         altaz_frame = AltAz(location=location, obstime=obstime)
         pixid = int(np.random.uniform(0, npixs_above_horizon.shape[0]))
         ang = healpy.pix2ang(nside, pixid)
@@ -96,16 +97,17 @@ def main(args):
 
         hotspots = true_hotspots.copy()
         N_change = 1
-        hotspots[N_change, :] = hotspots[N_change, :] + 0.003
+        # hotspots[N_change, :] = hotspots[N_change, :] + 0.003
 
         matched_hs = matcher.identify_stars(
-            hotspots, horizon_level=5, obstime=obstime, only_one_it=False
+            hotspots, horizon_level=0, obstime=obstime, only_one_it=False
         )
         if matched_hs is not None and len(matched_hs) > 0:
             ra, dec = matcher.determine_pointing(matched_hs)
             frame.add("matched_hs", np.array(matched_hs))
             frame.add("est_pointing", np.array([ra, dec]))
-
+        else:
+            print(tmp_timestamp, alt, az)
         socket.send(frame.serialize())
 
 
