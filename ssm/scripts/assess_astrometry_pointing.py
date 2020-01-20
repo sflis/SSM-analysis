@@ -102,12 +102,26 @@ def main(args):
         matched_hs = matcher.identify_stars(
             hotspots, horizon_level=0, obstime=obstime, only_one_it=False
         )
+
+
         if matched_hs is not None and len(matched_hs) > 0:
             ra, dec = matcher.determine_pointing(matched_hs)
             frame.add("matched_hs", np.array(matched_hs))
             frame.add("est_pointing", np.array([ra, dec]))
         else:
             print(tmp_timestamp, alt, az)
+
+        matched_hs = matcher.identify_stars(
+            hotspots, horizon_level=0, obstime=obstime, only_one_it=True
+        )
+        match = np.array(matched_hs)
+        match_quantity = match[:, 2] * match[:, 3] * match[:, 1]
+        index = np.where(match[:, 0] == all_hips[0][1])[0]
+        matched_match = np.argmax(match_quantity)
+        frame.add('true_match', match[index])
+        frame.add('matched_match', match[matched_match])
+        frame.add('match_quantity_list', match)
+
         socket.send(frame.serialize())
 
 

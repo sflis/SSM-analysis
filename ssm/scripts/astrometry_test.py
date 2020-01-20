@@ -66,7 +66,13 @@ matcher = StarPatternMatch.from_location(
 
 alt, az = np.deg2rad(13.21), 110  # 12.1
 alt, az = np.deg2rad(73.21), 0  # 12.1
-time_stamp ,alt,az = 1557362902.5210667, 1.1237636930813857, 4.602709354050866 #1557343327.5342753, 0.5482479003046035, 5.282641255134235# 1557379442.0362334, 0.015149983789129767, 2.9349089263799386
+time_stamp ,alt,az = 1557390562.9098482, 0.25906850409532045, 0.7878222318029959
+#1557351425.5583227, 1.120873732202405, 4.426301563444017
+#1557354965.5608082, 1.2632359718811235, 4.477689919838186
+#1557322263.4172812, 1.0130247059581006, 0.868233125943273
+#1557362902.5210667, 1.1237636930813857, 4.602709354050866
+#1557343327.5342753, 0.5482479003046035, 5.282641255134235
+#1557379442.0362334, 0.015149983789129767, 2.9349089263799386
 obstime = Time(time_stamp, format="unix")
 altaz_frame = AltAz(location=location, obstime=obstime)
 # az = np.random.uniform(0,2*np.pi)
@@ -96,12 +102,27 @@ matched_hs = matcher.identify_stars(hotspots,
 if check_matching_quantities:
     match = np.array(matched_hs)
     match_quantity = match[:, 2] * match[:, 3] * match[:, 1]
-    plt.plot(match_quantity, 'ob')
+
     print(len(match))
     print(all_hips[0][1])
     print(np.where(match[:, 0] == all_hips[0][1])[0])
     index = np.where(match[:, 0] == all_hips[0][1])[0]
+    plt.plot(match_quantity, 'ob')
     plt.plot(index, match_quantity[index], 'or')
+    plt.title('match_quantity')
+    plt.figure()
+    plt.plot(match[:,1], 'ob')
+    plt.plot(index, match[index,1], 'or')
+    plt.title('N matched hotspots')
+    plt.figure()
+    plt.title('(matched hotspots)/(stars)')
+    plt.plot(match[:,2], 'ob')
+    plt.plot(index, match[index,2], 'or')
+    plt.figure()
+    plt.title('(matched hotspots)/(hotspots)')
+    plt.plot(match[:,3], 'ob')
+    plt.plot(index, match[index,3], 'or')
+    # print(match[:, 2], match[:, 3], match[:, 1])
 else:
     telescope_pointing = SkyCoord(alt=alt * u.rad, az=az * u.rad, frame=altaz_frame)
     print("True pointing:", telescope_pointing.transform_to("icrs"))

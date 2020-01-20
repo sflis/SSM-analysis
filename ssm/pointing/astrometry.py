@@ -265,7 +265,7 @@ class StarPatternMatch:
             hip
         ) in test_hips:  # tqdm(test_hips, total=len(test_hips),disable=self.silence):
             pattern = self.patterns[hip]
-            ret = matchpattern(hotspotmap, hotspots, xm, ym, pattern, bins2d, 5.5)
+            ret = matchpattern(hotspotmap, hotspots, xm, ym, pattern, bins2d, 6.1)
             if ret is not None:
                 n_matched, n_stars = ret
                 match.append(
@@ -467,7 +467,7 @@ def prepare_hotspotmap(hs, bins):
     ym = (np.min(hs[:, 1]) - 0.01, np.max(hs[:, 1]) + 0.01)
     hotspotmap = hist2d(hs, bins)
     bw = hotspotmap.binwidths[0][0]
-    m = hotspotmap.bincontent > 1
+    # m = hotspotmap.bincontent > 1
 
     # hotspotmap.bincontent[m] = 1
     n_hotspots = np.sum(hotspotmap.bincontent)
@@ -478,7 +478,9 @@ def prepare_hotspotmap(hs, bins):
             tmpmap = hist2d(hs, bins)
             hotspotmap.bincontent[:] += tmpmap.bincontent
     m = hotspotmap.bincontent > 1
-    # hotspotmap.bincontent[m] = 1
+    tmpbinc = hotspotmap.bincontent.flatten()
+    tmpbinc[m.flatten()] = 1
+    hotspotmap.bincontent[:] = tmpbinc.reshape(hotspotmap.bincontent.shape)
     return hotspotmap, n_hotspots, xm, ym
 
 
@@ -509,7 +511,10 @@ def matchpattern(hotspotmap, hotspots, xlim, ylim, pattern, bins, vmag_lim=None)
     hotspots[:, 1] = hs_y
 
     vmag_lim = vmag_lim or np.inf
-    vmag_starmask = pattern.sp_vmag < vmag_lim
+    vmag_starmask = np.where(pattern.sp_vmag < vmag_lim)[0]
+    # if np.sum(vmag_starmask)< min_stars:
+    #     sorted_ind_vmag = np.argsort(pattern.sp_vmag)
+    #     vmag_starmask = sorted_ind_vmag[:min_stars]
 
     angs, star_mask, dbins, hs_bins, star_bins = prepare_pattern_rotations(
         hotspots, pattern.sp_pos[vmag_starmask]
