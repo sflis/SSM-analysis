@@ -55,13 +55,14 @@ def find_clusters(
 ) -> list:
     peaks = np.where(res > upthreshold)
     clusters = []
+    cluster_pixels = []
     for peak in peaks[0]:
         for c in clusters:
-            if peak in c:
+            if peak in cluster_pixels:
                 break
         else:
             clusters.append(cluster_build(peak, res, lothreshold, [peak], neighbors))
-
+            cluster_pixels += clusters[-1]
     return clusters
 
 

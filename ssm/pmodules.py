@@ -171,7 +171,6 @@ class FlatFielding(ProcessingModule):
         pass
 
     def run(self, frame):
-        # Determining FF coefficients based on first 7000 frames
         data = frame[self.in_data]
         mean_res = []
         for ii, i in enumerate(
@@ -181,7 +180,10 @@ class FlatFielding(ProcessingModule):
             )
         ):
             r = data.data[i].copy()
-            r[r > self.star_thresh] = np.nan
+            rstd = np.nanstd(r)
+            rmean = np.nanmean(r)
+
+            r[r > rmean +rstd*self.star_thresh] = np.nan
             mean_res.append(r)
         mean_res = np.array(mean_res)
         print("Mean amplitude during flat fielding", np.nanmean(mean_res))
